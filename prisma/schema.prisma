@@ -1,0 +1,223 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SECRETARIAT
+  CHAIR
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AmendmentAction {
+  ADD
+  MODIFY
+  STRIKE
+}
+
+enum ScoreType {
+  POI
+  SPEECH
+  AMENDMENT
+  RESOLUTION
+}
+
+enum AttendanceStatus {
+  PRESENT
+  PRESENT_AND_VOTING
+  ABSENT
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String
+  passwordHash String
+  role         Role
+  active       Boolean    @default(true)
+  committeeId  String?
+  committee    Committee? @relation(fields: [committeeId], references: [id], onDelete: SetNull)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  scoreEvents ScoreEvent[]
+  reports     ChairReport[]
+}
+
+model Committee {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  /// One agenda topic per line
+  topics    String   @default("")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  chairs             User[]
+  delegations        Delegation[]
+  resolutions        Resolution[]
+  amendments         Amendment[]
+  scoreEvents        ScoreEvent[]
+  attendanceSessions AttendanceSession[]
+  scheduleItems      ScheduleItem[]
+  reports            ChairReport[]
+}
+
+model Delegation {
+  id          String    @id @default(cuid())
+  name        String
+  committeeId String
+  committee   Committee @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  resolutions Resolution[]
+  amendments  Amendment[]
+  scoreEvents ScoreEvent[]
+  attendance  AttendanceRecord[]
+
+  @@unique([committeeId, name])
+}
+
+model Resolution {
+  id               String       @id @default(cuid())
+  /// Short public number within the committee, e.g. 3 -> "HRC/R/3"
+  number           Int
+  /// Private code given to the submitter so they can track status
+  trackingCode     String       @unique
+  committeeId      String
+  committee        Committee    @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  delegationId     String
+  delegation       Delegation   @relation(fields: [delegationId], references: [id], onDelete: Cascade)
+  coSubmitters     String       @default("")
+  topic            String       @default("")
+  preambulatory    String
+  operative        String
+  status           ReviewStatus @default(PENDING)
+  chairNote        String       @default("")
+  chosen           Boolean      @default(false)
+  chosenAt         DateTime?
+  reviewedAt       DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  amendments  Amendment[]
+  scoreEvents ScoreEvent[]
+
+  @@unique([committeeId, number])
+  @@index([committeeId, status])
+}
+
+model Amendment {
+  id           String          @id @default(cuid())
+  number       Int
+  trackingCode String          @unique
+  committeeId  String
+  committee    Committee       @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  delegationId String
+  delegation   Delegation      @relation(fields: [delegationId], references: [id], onDelete: Cascade)
+  resolutionId String?
+  resolution   Resolution?     @relation(fields: [resolutionId], references: [id], onDelete: SetNull)
+  /// Free-text resolution reference when not linked (e.g. a draft not yet on the system)
+  resolutionRef String         @default("")
+  clause       String
+  action       AmendmentAction
+  text         String          @default("")
+  rationale    String          @default("")
+  status       ReviewStatus    @default(PENDING)
+  chairNote    String          @default("")
+  chosen       Boolean         @default(false)
+  chosenAt     DateTime?
+  reviewedAt   DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  scoreEvents ScoreEvent[]
+
+  @@unique([committeeId, number])
+  @@index([committeeId, status])
+}
+
+model ScoreEvent {
+  id           String      @id @default(cuid())
+  committeeId  String
+  committee    Committee   @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  delegationId String
+  delegation   Delegation  @relation(fields: [delegationId], references: [id], onDelete: Cascade)
+  type         ScoreType
+  points       Int
+  note         String      @default("")
+  amendmentId  String?     @unique
+  amendment    Amendment?  @relation(fields: [amendmentId], references: [id], onDelete: Cascade)
+  resolutionId String?     @unique
+  resolution   Resolution? @relation(fields: [resolutionId], references: [id], onDelete: Cascade)
+  createdById  String?
+  createdBy    User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
+
+  @@index([committeeId, createdAt])
+}
+
+model AttendanceSession {
+  id          String    @id @default(cuid())
+  committeeId String
+  committee   Committee @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  name        String
+  createdAt   DateTime  @default(now())
+
+  records AttendanceRecord[]
+}
+
+model AttendanceRecord {
+  id           String            @id @default(cuid())
+  sessionId    String
+  session      AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  delegationId String
+  delegation   Delegation        @relation(fields: [delegationId], references: [id], onDelete: Cascade)
+  status       AttendanceStatus
+  updatedAt    DateTime          @updatedAt
+
+  @@unique([sessionId, delegationId])
+}
+
+model ScheduleItem {
+  id          String     @id @default(cuid())
+  title       String
+  description String     @default("")
+  location    String     @default("")
+  startsAt    DateTime
+  endsAt      DateTime?
+  /// null = applies to everyone
+  committeeId String?
+  committee   Committee? @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+
+  @@index([startsAt])
+}
+
+model ChairReport {
+  id           String    @id @default(cuid())
+  committeeId  String
+  committee    Committee @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  title        String
+  fileName     String
+  mimeType     String
+  size         Int
+  data         Bytes
+  uploadedById String?
+  uploadedBy   User?     @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime  @default(now())
+}
+
+model AppSetting {
+  key   String @id
+  value String
+}
