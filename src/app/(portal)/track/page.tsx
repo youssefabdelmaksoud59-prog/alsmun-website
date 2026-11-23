@@ -13,12 +13,12 @@ async function lookup(code: string) {
   if (code.startsWith("R-")) {
     const r = await db.resolution.findUnique({ where: { trackingCode: code }, include: { committee: true, delegation: true } });
     if (!r) return null;
-    return { kind: "Resolution", ref: resolutionRef(r.committee.code, r.number), status: r.status, chosen: r.chosen, note: r.chairNote, delegation: r.delegation.name, createdAt: r.createdAt, link: r.status === "APPROVED" ? `/resolutions/${r.id}` : null };
+    return { kind: "Resolution", ref: resolutionRef(r.committee.code, r.number), status: r.status, chosen: r.chosen, note: r.chairNote, delegation: r.delegation.name, createdAt: r.createdAt, link: r.status === "APPROVED" ? `/delegate/${encodeURIComponent(r.committee.code)}/resolutions/${r.id}` : null };
   }
   if (code.startsWith("A-")) {
     const a = await db.amendment.findUnique({ where: { trackingCode: code }, include: { committee: true, delegation: true } });
     if (!a) return null;
-    return { kind: "Amendment", ref: amendmentRef(a.committee.code, a.number), status: a.status, chosen: a.chosen, note: a.chairNote, delegation: a.delegation.name, createdAt: a.createdAt, link: a.status === "APPROVED" ? `/amendments?committee=${encodeURIComponent(a.committee.code)}` : null };
+    return { kind: "Amendment", ref: amendmentRef(a.committee.code, a.number), status: a.status, chosen: a.chosen, note: a.chairNote, delegation: a.delegation.name, createdAt: a.createdAt, link: a.status === "APPROVED" ? `/delegate/${encodeURIComponent(a.committee.code)}/amendments` : null };
   }
   return null;
 }
@@ -29,7 +29,7 @@ export default async function TrackPage({ searchParams }: { searchParams: Promis
   const result = code ? await lookup(code) : null;
   return (
     <div className="container-page max-w-2xl">
-      <PageHeader eyebrow="Delegate portal" title="Track a submission" description="Enter the tracking code you got when you submitted, to see whether your chairs have reviewed it." />
+      <PageHeader eyebrow="Delegate" title="Track a submission" description="Enter the tracking code you got when you submitted, to see whether your chairs have reviewed it." />
       <form className="card card-pad flex flex-col gap-3 sm:flex-row sm:items-end" action="/track">
         <div className="flex-1">
           <label htmlFor="code" className="label">Tracking code</label>

@@ -14,11 +14,11 @@ const ACTIONS = [
   { value: "STRIKE", label: "Strike", help: "Delete a clause or sub-clause." },
 ] as const;
 
-export function AmendmentForm({ committees, initialCommittee, initialResolution }: { committees: PortalCommittee[]; initialCommittee?: string; initialResolution?: string }) {
+export function AmendmentForm({ committee, initialResolution }: { committee: PortalCommittee; initialResolution?: string }) {
   const [state, action, pending] = useActionState(submitAmendment, null);
   const [formKey, setFormKey] = useState(0);
   const [dismissedKey, setDismissedKey] = useState(-1);
-  const choice = useDelegationChoice(committees, initialCommittee);
+  const choice = useDelegationChoice(committee);
   const [resolutionId, setResolutionId] = useState(initialResolution ?? "");
   const [resolutionRef, setResolutionRef] = useState("");
   const [clause, setClause] = useState("");
@@ -26,9 +26,8 @@ export function AmendmentForm({ committees, initialCommittee, initialResolution 
   const [text, setText] = useState("");
   const [rationale, setRationale] = useState("");
 
-  const committee = committees.find((c) => c.id === choice.committeeId);
   const errors = state && !state.ok ? state.fieldErrors : undefined;
-  const hasResolutions = (committee?.resolutions.length ?? 0) > 0;
+  const hasResolutions = committee.resolutions.length > 0;
 
   if (state?.ok && state.data && dismissedKey !== formKey) {
     return (
@@ -59,7 +58,7 @@ export function AmendmentForm({ committees, initialCommittee, initialResolution 
 
       <section className="card card-pad space-y-4">
         <h2 className="text-base font-bold">Who is submitting</h2>
-        <DelegationPicker committees={committees} choice={{ ...choice, setCommitteeId: (v) => { choice.setCommitteeId(v); setResolutionId(""); } }} errors={errors} />
+        <DelegationPicker committee={committee} choice={choice} errors={errors} />
       </section>
 
       <section className="card card-pad space-y-5">
@@ -69,12 +68,12 @@ export function AmendmentForm({ committees, initialCommittee, initialResolution 
           {hasResolutions ? (
             <select id="resolutionId" name="resolutionId" className="input" value={resolutionId} onChange={(e) => setResolutionId(e.target.value)} required aria-invalid={!!errors?.resolutionId}>
               <option value="">Choose the resolution…</option>
-              {committee!.resolutions.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+              {committee.resolutions.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
             </select>
           ) : (
             <>
               <input id="resolutionRef" name="resolutionRef" className="input" maxLength={120} value={resolutionRef} onChange={(e) => setResolutionRef(e.target.value)} placeholder="e.g. Draft resolution by France on climate refugees" required aria-invalid={!!errors?.resolutionId} />
-              <p className="hint">{committee ? "No approved resolutions are listed for this committee yet, so describe the one on the floor." : "Choose your committee first."}</p>
+              <p className="hint">No approved resolutions are listed for this committee yet, so describe the one on the floor.</p>
             </>
           )}
           {errors?.resolutionId && <p className="field-error">{errors.resolutionId}</p>}

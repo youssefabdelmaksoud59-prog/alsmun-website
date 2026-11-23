@@ -1,43 +1,60 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { z } from "zod";
 import { db } from "@/lib/db";
-import { endSession, getCurrentUser, hashPassword, startSession, verifyPassword } from "@/lib/auth";
+import {
+  MIN_CODE_LENGTH,
+  SECRETARIAT_CODE_KEY,
+  assertSecretariat,
+  checkSecretariatCode,
+  codeVersion,
+  endSession,
+  hashCode,
+  normaliseAccessCode,
+  secretariatCodeHash,
+  startChairSession,
+  startSecretariatSession,
+} from "@/lib/auth";
 import { clientIp, isLimited, recordHit } from "@/lib/rate-limit";
-import { fieldErrors, str, type FormState } from "@/lib/form";
+import { str, type FormState } from "@/lib/form";
 
-function safeNext(next: string, role: "SECRETARIAT" | "CHAIR", committeeCode?: string) {
-  // Send chairs straight to their committee: chaining a second redirect after a server action can stall.
-  const fallback = role === "SECRETARIAT" ? "/secretariat" : committeeCode ? `/chair/${encodeURIComponent(committeeCode)}` : "/chair";
-  if (!next.startsWith("/") || next.startsWith("//")) return fallback;
-  if (role === "CHAIR" && next.startsWith("/secretariat")) return fallback;
-  return next;
+const WINDOW = 15 * 60 * 1000;
+const TOO_MANY = "Too many wrong codes from this device. Please wait 15 minutes and try again.";
+
+function isLocalPath(p: string) {
+  return p.startsWith("/") && !p.startsWith("//");
 }
 
-export async function login(_prev: FormState, fd: FormData): Promise<FormState> {
-  const email = str(fd, "email").trim().toLowerCase();
-  const password = str(fd, "password");
+export async function chairLogin(_prev: FormState, fd: FormData): Promise<FormState> {
   const ip = await clientIp();
-  // Only failed attempts count, so busy chairs signing in on several devices are never locked out.
-  const WINDOW = 15 * 60 * 1000;
-  if (isLimited(`login:${ip}`, 30) || isLimited(`login:${email}`, 10)) {
-    return { ok: false, error: "Too many sign-in attempts. Please wait 15 minutes and try again." };
+  if (isLimited(`code:${ip}`, 12)) return { ok: false, error: TOO_MANY };
+  const code = normaliseAccessCode(str(fd, "code"));
+  if (!code) return { ok: false, error: "Enter your chair code." };
+  const committee = await db.committee.findFirst({ where: { chairCode: { equals: code, mode: "insensitive" } } });
+  if (!committee) {
+    recordHit(`code:${ip}`, WINDOW);
+    return { ok: false, error: "That chair code isn’t right. Check it with the secretariat." };
   }
-  if (!email || !password) return { ok: false, error: "Enter your email and password." };
-  const user = await db.user.findUnique({ where: { email }, include: { committee: { select: { code: true } } } });
-  // Compare against a dummy hash when the user is missing, so timing doesn't reveal which emails exist.
-  const ok = await verifyPassword(password, user?.passwordHash ?? "$2b$11$hNkHbRTp5jVj2jeCI2od/uF1fr2AHTttrSgGKQhemROTqkMiaPN0m");
-  if (!user || !ok) {
-    recordHit(`login:${ip}`, WINDOW);
-    recordHit(`login:${email}`, WINDOW);
-    return { ok: false, error: "That email and password don’t match an account." };
+  await startChairSession(committee);
+  const home = `/chair/${encodeURIComponent(committee.code)}`;
+  const next = str(fd, "next");
+  redirect(isLocalPath(next) && next.startsWith(home) ? next : home);
+}
+
+export async function secretariatLogin(_prev: FormState, fd: FormData): Promise<FormState> {
+  const ip = await clientIp();
+  if (isLimited(`code:${ip}`, 12)) return { ok: false, error: TOO_MANY };
+  const code = str(fd, "code");
+  if (!code.trim()) return { ok: false, error: "Enter the secretariat code." };
+  if (!(await secretariatCodeHash())) redirect("/setup");
+  const { ok, version } = await checkSecretariatCode(code);
+  if (!ok) {
+    recordHit(`code:${ip}`, WINDOW);
+    return { ok: false, error: "That secretariat code isn’t right." };
   }
-  if (!user.active) return { ok: false, error: "This account has been disabled. Contact the secretariat." };
-  await startSession(user);
-  let next = safeNext(str(fd, "next"), user.role, user.committee?.code);
-  if (user.role === "CHAIR" && next === "/chair" && user.committee) next = `/chair/${encodeURIComponent(user.committee.code)}`;
-  redirect(next);
+  await startSecretariatSession(version);
+  const next = str(fd, "next");
+  redirect(isLocalPath(next) && (next.startsWith("/secretariat") || next.startsWith("/chair")) ? next : "/secretariat");
 }
 
 export async function logout() {
@@ -45,44 +62,41 @@ export async function logout() {
   redirect("/");
 }
 
-const setupSchema = z
-  .object({
-    name: z.string().trim().min(2, "Enter your name.").max(80),
-    email: z.string().trim().toLowerCase().email("Enter a valid email address."),
-    password: z.string().min(10, "Use at least 10 characters.").max(200),
-    confirm: z.string(),
-  })
-  .refine((v) => v.password === v.confirm, { path: ["confirm"], message: "The passwords don’t match." });
+function validateNewCode(code: string, confirm: string): string | null {
+  if (code.length < MIN_CODE_LENGTH) return `Use at least ${MIN_CODE_LENGTH} characters.`;
+  if (code.length > 64) return "Keep it under 64 characters.";
+  if (code !== confirm) return "The two codes don’t match.";
+  return null;
+}
 
-/** First-run only: creates the first secretariat account when no users exist. */
-export async function setupFirstAccount(_prev: FormState, fd: FormData): Promise<FormState> {
-  if ((await db.user.count()) > 0) return { ok: false, error: "Setup is already complete. Please sign in." };
-  const parsed = setupSchema.safeParse(Object.fromEntries(fd));
-  if (!parsed.success) return { ok: false, error: "Please fix the highlighted fields.", fieldErrors: fieldErrors(parsed.error) };
-  const user = await db.user.create({
-    data: { name: parsed.data.name, email: parsed.data.email, passwordHash: await hashPassword(parsed.data.password), role: "SECRETARIAT" },
-  });
-  await startSession(user);
+async function storeSecretariatCode(code: string) {
+  const hash = await hashCode(code);
+  await db.appSetting.upsert({ where: { key: SECRETARIAT_CODE_KEY }, create: { key: SECRETARIAT_CODE_KEY, value: hash }, update: { value: hash } });
+  return codeVersion(hash);
+}
+
+/** First run only: sets the secretariat code when none exists yet. */
+export async function setupSecretariatCode(_prev: FormState, fd: FormData): Promise<FormState> {
+  if (await secretariatCodeHash()) return { ok: false, error: "The secretariat code is already set. Use it to sign in." };
+  const code = normaliseAccessCode(str(fd, "code"));
+  const err = validateNewCode(code, normaliseAccessCode(str(fd, "confirm")));
+  if (err) return { ok: false, error: err, fieldErrors: { code: err } };
+  await startSecretariatSession(await storeSecretariatCode(code));
   redirect("/secretariat");
 }
 
-const pwSchema = z
-  .object({
-    current: z.string().min(1, "Enter your current password."),
-    password: z.string().min(10, "Use at least 10 characters.").max(200),
-    confirm: z.string(),
-  })
-  .refine((v) => v.password === v.confirm, { path: ["confirm"], message: "The passwords don’t match." });
-
-export async function changeOwnPassword(_prev: FormState, fd: FormData): Promise<FormState> {
-  const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "You are signed out." };
-  const parsed = pwSchema.safeParse(Object.fromEntries(fd));
-  if (!parsed.success) return { ok: false, error: "Please fix the highlighted fields.", fieldErrors: fieldErrors(parsed.error) };
-  if (!(await verifyPassword(parsed.data.current, user.passwordHash))) {
-    return { ok: false, error: "Your current password is wrong.", fieldErrors: { current: "This is not your current password." } };
+export async function changeSecretariatCode(_prev: FormState, fd: FormData): Promise<FormState> {
+  try {
+    await assertSecretariat();
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
   }
-  const updated = await db.user.update({ where: { id: user.id }, data: { passwordHash: await hashPassword(parsed.data.password) } });
-  await startSession(updated);
-  return { ok: true, message: "Password changed. Other devices have been signed out." };
+  const code = normaliseAccessCode(str(fd, "code"));
+  const err = validateNewCode(code, normaliseAccessCode(str(fd, "confirm")));
+  if (err) return { ok: false, error: err, fieldErrors: { code: err } };
+  if (await db.committee.findFirst({ where: { chairCode: { equals: code, mode: "insensitive" } } })) {
+    return { ok: false, error: "That code is already used as a chair code. Pick a different one." };
+  }
+  await startSecretariatSession(await storeSecretariatCode(code));
+  return { ok: true, message: "Secretariat code changed. Anyone signed in with the old code has been signed out." };
 }

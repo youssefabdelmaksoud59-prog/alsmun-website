@@ -6,21 +6,35 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import clsx from "clsx";
 
-const NAV = [
-  { href: "/amendments", label: "Amendments" },
-  { href: "/resolutions", label: "Resolutions" },
-  { href: "/schedule", label: "Schedule" },
-  { href: "/reports", label: "Chair reports" },
+const ROLE_NAV = [
+  { href: "/delegate", label: "Delegate" },
+  { href: "/login/chair", label: "Chair" },
+  { href: "/login/secretariat", label: "Secretariat" },
   { href: "/guide", label: "THIMUN guide" },
 ];
+
+/** Inside a committee's delegate portal, the menu switches to that committee's pages. */
+function navFor(pathname: string) {
+  const m = /^\/delegate\/([^/]+)/.exec(pathname);
+  if (!m) return ROLE_NAV;
+  const base = `/delegate/${m[1]}`;
+  return [
+    { href: `${base}/amendments`, label: "Amendments" },
+    { href: `${base}/resolutions`, label: "Resolutions" },
+    { href: `${base}/schedule`, label: "Schedule" },
+    { href: `${base}/reports`, label: "Chair reports" },
+    { href: "/guide", label: "THIMUN guide" },
+  ];
+}
 
 export function SiteHeader({ name, user }: { name: string; user: { name: string; role: "SECRETARIAT" | "CHAIR" } | null }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [pathname]);
 
-  const staffHref = user ? (user.role === "SECRETARIAT" ? "/secretariat" : "/chair") : "/login";
-  const staffLabel = user ? (user.role === "SECRETARIAT" ? "Secretariat" : "Chair panel") : "Staff login";
+  const NAV = navFor(pathname);
+  const staffHref = user ? (user.role === "SECRETARIAT" ? "/secretariat" : "/chair") : null;
+  const staffLabel = user ? (user.role === "SECRETARIAT" ? "Secretariat" : "Chair portal") : null;
 
   return (
     <header className="sticky top-0 z-40 border-b border-navy-900 bg-navy-950 text-white">
@@ -44,9 +58,11 @@ export function SiteHeader({ name, user }: { name: string; user: { name: string;
               {n.label}
             </Link>
           ))}
-          <Link href={staffHref} className="btn-gold btn-sm ml-2">
-            {staffLabel}
-          </Link>
+          {staffHref && (
+            <Link href={staffHref} className="btn-gold btn-sm ml-2">
+              {staffLabel}
+            </Link>
+          )}
         </nav>
 
         <button
@@ -78,9 +94,11 @@ export function SiteHeader({ name, user }: { name: string; user: { name: string;
                 {n.label}
               </Link>
             ))}
-            <Link href={staffHref} className="btn-gold mt-2 mb-2">
-              {staffLabel}
-            </Link>
+            {staffHref && (
+              <Link href={staffHref} className="btn-gold mb-2 mt-2">
+                {staffLabel}
+              </Link>
+            )}
           </div>
         </nav>
       )}

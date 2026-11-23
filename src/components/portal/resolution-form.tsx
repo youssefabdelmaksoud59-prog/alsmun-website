@@ -11,10 +11,10 @@ import { SubmissionSuccess } from "./submission-success";
 import { saveDelegation } from "./storage";
 import type { PortalCommittee } from "./types";
 
-export function ResolutionForm({ committees, initialCommittee }: { committees: PortalCommittee[]; initialCommittee?: string }) {
+export function ResolutionForm({ committee }: { committee: PortalCommittee }) {
   const [state, action, pending] = useActionState(submitResolution, null);
   const [formKey, setFormKey] = useState(0);
-  const choice = useDelegationChoice(committees, initialCommittee);
+  const choice = useDelegationChoice(committee);
   const [topic, setTopic] = useState("");
   const [coSubmitters, setCoSubmitters] = useState("");
   const [pre, setPre] = useState<string[]>([""]);
@@ -22,9 +22,8 @@ export function ResolutionForm({ committees, initialCommittee }: { committees: P
   const [tab, setTab] = useState<"write" | "preview">("write");
   const [dismissedKey, setDismissedKey] = useState(-1);
 
-  const committee = committees.find((c) => c.id === choice.committeeId);
   const delegationName =
-    committee?.delegations.find((d) => d.id === choice.delegationId)?.name || choice.delegationName || "Your delegation";
+    committee.delegations.find((d) => d.id === choice.delegationId)?.name || choice.delegationName || "Your delegation";
   const preClean = pre.map((c) => c.trim()).filter(Boolean);
   const opClean = op.map((c) => c.trim()).filter(Boolean);
   const issues = useMemo(() => checkResolution(preClean, opClean), [preClean.join("\u0000"), opClean.join("\u0000")]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -62,11 +61,11 @@ export function ResolutionForm({ committees, initialCommittee }: { committees: P
 
       <section className="card card-pad space-y-4">
         <h2 className="text-base font-bold">1. Heading</h2>
-        <DelegationPicker committees={committees} choice={choice} errors={errors} />
         <div className="grid gap-4 sm:grid-cols-2">
+          <DelegationPicker committee={committee} choice={choice} errors={errors} />
           <div>
             <label htmlFor="topic" className="label">Question of (topic)</label>
-            {committee && committee.topics.length > 0 ? (
+            {committee.topics.length > 0 ? (
               <select id="topic" name="topic" className="input" value={topic} onChange={(e) => setTopic(e.target.value)} required>
                 <option value="">Choose the topic…</option>
                 {committee.topics.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -75,6 +74,8 @@ export function ResolutionForm({ committees, initialCommittee }: { committees: P
               <input id="topic" name="topic" className="input" maxLength={200} value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. The question of climate refugees" />
             )}
           </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="coSubmitters" className="label">Co-submitters <span className="font-normal text-slate-500">(optional)</span></label>
             <input id="coSubmitters" name="coSubmitters" className="input" maxLength={600} value={coSubmitters} onChange={(e) => setCoSubmitters(e.target.value)} placeholder="e.g. France, Japan, Brazil" />
@@ -117,7 +118,7 @@ export function ResolutionForm({ committees, initialCommittee }: { committees: P
             <p className="text-sm text-slate-500">Write some clauses to see the preview.</p>
           ) : (
             <ResolutionDocument
-              committeeName={committee?.name ?? "Committee"}
+              committeeName={committee.name}
               topic={topic}
               submitter={delegationName}
               coSubmitters={coSubmitters}

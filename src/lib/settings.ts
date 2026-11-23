@@ -29,3 +29,11 @@ export const getSettings = cache(async (): Promise<ConferenceSettings> => {
 export const getCommittees = cache(async () =>
   db.committee.findMany({ orderBy: [{ sortOrder: "asc" }, { code: "asc" }] }),
 );
+
+export const getCommitteeByCode = cache(async (code: string) =>
+  db.committee.findUnique({ where: { code: decodeURIComponent(code) } }),
+);
+
+export function delegateBase(code: string) {
+  return `/delegate/${encodeURIComponent(code)}`;
+}

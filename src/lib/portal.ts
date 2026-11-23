@@ -6,9 +6,9 @@ export function topicList(topics: string) {
   return topics.split("\n").map((t) => t.trim()).filter(Boolean);
 }
 
-export async function loadPortalCommittees(): Promise<PortalCommittee[]> {
-  const committees = await db.committee.findMany({
-    orderBy: [{ sortOrder: "asc" }, { code: "asc" }],
+export async function loadPortalCommittee(code: string): Promise<PortalCommittee | null> {
+  const c = await db.committee.findUnique({
+    where: { code: decodeURIComponent(code) },
     include: {
       delegations: { orderBy: { name: "asc" }, select: { id: true, name: true } },
       resolutions: {
@@ -18,7 +18,8 @@ export async function loadPortalCommittees(): Promise<PortalCommittee[]> {
       },
     },
   });
-  return committees.map((c) => ({
+  if (!c) return null;
+  return {
     id: c.id,
     code: c.code,
     name: c.name,
@@ -28,5 +29,5 @@ export async function loadPortalCommittees(): Promise<PortalCommittee[]> {
       id: r.id,
       label: `${resolutionRef(c.code, r.number)} · ${r.delegation.name}${r.topic ? ` · ${r.topic}` : ""}${r.chosen ? " (on the floor)" : ""}`,
     })),
-  }));
+  };
 }

@@ -2,7 +2,7 @@
  * Seeds the ALSMUN V committees. Safe to run more than once.
  *
  *   npm run db:seed              committees only
- *   npm run db:seed -- --demo    also adds demo delegations, a schedule and a demo secretariat login
+ *   npm run db:seed -- --demo    also adds demo delegations, a schedule and demo access codes
  */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -60,12 +60,16 @@ async function main() {
     });
   }
 
-  const email = "secretariat@alsmun.test";
-  if (!(await db.user.findUnique({ where: { email } }))) {
-    await db.user.create({ data: { email, name: "Demo Secretariat", role: "SECRETARIAT", passwordHash: await bcrypt.hash("demo-password-123", 11) } });
-    await db.user.create({ data: { email: "chair.ga@alsmun.test", name: "Demo GA Chair", role: "CHAIR", committeeId: ga.id, passwordHash: await bcrypt.hash("demo-password-123", 11) } });
-    console.log("Demo logins: secretariat@alsmun.test / chair.ga@alsmun.test, password demo-password-123");
-  }
+  // Demo access codes. Never run --demo against the live database.
+  await db.committee.update({ where: { id: ga.id }, data: { chairCode: "ga-demo-code" } });
+  const sc = committees.find((c) => c.code === "SC")!;
+  await db.committee.update({ where: { id: sc.id }, data: { chairCode: "sc-demo-code" } });
+  await db.appSetting.upsert({
+    where: { key: "secretariatCodeHash" },
+    create: { key: "secretariatCodeHash", value: await bcrypt.hash("sec-demo-code", 11) },
+    update: {},
+  });
+  console.log("Demo codes: GA chair ga-demo-code, SC chair sc-demo-code, secretariat sec-demo-code");
 }
 
 main()

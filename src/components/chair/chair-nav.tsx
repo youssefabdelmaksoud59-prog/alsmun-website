@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
 
-export function ChairNav({ code, pending }: { code: string; pending: { resolutions: number; amendments: number } }) {
+export function ChairNav({ code, pending }: { code: string; pending: { resolutions: number; amendments: number; issues: number } }) {
   const pathname = usePathname();
   const base = `/chair/${encodeURIComponent(code)}`;
   const items = [
@@ -15,6 +15,7 @@ export function ChairNav({ code, pending }: { code: string; pending: { resolutio
     { href: `${base}/attendance`, label: "Attendance" },
     { href: `${base}/scores`, label: "Score sheet" },
     { href: `${base}/reports`, label: "Reports" },
+    { href: `${base}/issues`, label: "Strikes & problems", count: pending.issues },
     { href: `${base}/setup`, label: "Delegations & topics" },
   ];
   return (

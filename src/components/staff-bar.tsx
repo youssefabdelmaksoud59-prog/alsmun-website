@@ -13,7 +13,6 @@ export function StaffBar({ user, children }: { user: CurrentUser; children?: Rea
         <div className="flex items-center gap-1">
           {children}
           {user.role === "SECRETARIAT" && <Link href="/secretariat" className="btn-ghost btn-sm">Secretariat</Link>}
-          <Link href="/account" className="btn-ghost btn-sm">Account</Link>
           <form action={logout}><button type="submit" className="btn-ghost btn-sm">Sign out</button></form>
         </div>
       </div>

@@ -5,7 +5,7 @@ import { randomBytes } from "crypto";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { assertSecretariat, hashPassword } from "@/lib/auth";
+import { MIN_CODE_LENGTH, assertSecretariat, checkSecretariatCode, normaliseAccessCode } from "@/lib/auth";
 import { fieldErrors, str, type FormState } from "@/lib/form";
 import { zonedToUtc } from "@/lib/time";
 import { DEFAULT_SETTINGS } from "@/lib/settings";
@@ -17,11 +17,12 @@ function refresh() {
 }
 
 function tempPassword() {
-  const alphabet = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
-  const b = randomBytes(12);
+  // Easy to read out loud: no 0/O/1/I/L.
+  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const b = randomBytes(8);
   let out = "";
-  for (let i = 0; i < 12; i++) out += alphabet[b[i] % alphabet.length];
-  return `${out.slice(0, 4)}-${out.slice(4, 8)}-${out.slice(8)}`;
+  for (let i = 0; i < 8; i++) out += alphabet[b[i] % alphabet.length];
+  return `${out.slice(0, 4)}-${out.slice(4)}`;
 }
 
 async function wrap<T extends { ok: boolean }>(fn: () => Promise<T>): Promise<T | { ok: false; error: string }> {
@@ -35,89 +36,28 @@ async function wrap<T extends { ok: boolean }>(fn: () => Promise<T>): Promise<T 
   }
 }
 
-/* ───────────── Users ───────────── */
+/* ───────────── Chair codes ───────────── */
 
-const userSchema = z.object({
-  name: z.string().trim().min(2, "Enter a name.").max(80),
-  email: z.string().trim().toLowerCase().email("Enter a valid email address."),
-  role: z.enum(["CHAIR", "SECRETARIAT"]),
-  committeeId: z.string().optional().default(""),
-  password: z.string().max(200).optional().default(""),
-});
-
-export async function createUser(_prev: FormState, fd: FormData): Promise<FormState> {
+export async function setChairCode(committeeId: string, rawCode: string): Promise<Result> {
   return wrap(async () => {
     await assertSecretariat();
-    const parsed = userSchema.safeParse(Object.fromEntries(fd));
-    if (!parsed.success) return { ok: false as const, error: "Please fix the highlighted fields.", fieldErrors: fieldErrors(parsed.error) };
-    const v = parsed.data;
-    if (v.role === "CHAIR" && !v.committeeId) return { ok: false as const, error: "Choose the chair’s committee.", fieldErrors: { committeeId: "Choose a committee." } };
-    if (v.password && v.password.length < 10) return { ok: false as const, error: "Passwords need at least 10 characters.", fieldErrors: { password: "At least 10 characters." } };
-    const password = v.password || tempPassword();
-    await db.user.create({
-      data: {
-        name: v.name,
-        email: v.email,
-        role: v.role,
-        committeeId: v.role === "CHAIR" ? v.committeeId : v.committeeId || null,
-        passwordHash: await hashPassword(password),
-      },
-    });
+    const code = normaliseAccessCode(rawCode);
+    if (code && code.length < MIN_CODE_LENGTH) throw new Error(`Use at least ${MIN_CODE_LENGTH} characters.`);
+    if (code.length > 64) throw new Error("Keep it under 64 characters.");
+    if (code) {
+      const clash = await db.committee.findFirst({ where: { chairCode: { equals: code, mode: "insensitive" }, id: { not: committeeId } } });
+      if (clash) throw new Error(`${clash.code} already uses that code. Each committee needs its own.`);
+      if ((await checkSecretariatCode(code)).ok) throw new Error("That is the secretariat code. Pick a different one.");
+    }
+    const c = await db.committee.update({ where: { id: committeeId }, data: { chairCode: code || null } });
     refresh();
-    return { ok: true as const, message: `Account created for ${v.email}. Password: ${password}`, data: { password } };
+    return { ok: true as const, message: code ? `${c.code} chair code saved. Chairs signed in with the old code have been signed out.` : `${c.code} chair code removed. Its chairs can’t sign in until you set a new one.` };
   });
 }
 
-export async function updateUser(userId: string, patch: { committeeId?: string | null; role?: "CHAIR" | "SECRETARIAT"; active?: boolean; name?: string }): Promise<Result> {
-  return wrap(async () => {
-    const me = await assertSecretariat();
-    if (userId === me.id && (patch.active === false || patch.role === "CHAIR")) {
-      throw new Error("You can’t demote or disable your own account.");
-    }
-    if (patch.role === "CHAIR" || patch.active === false) {
-      const target = await db.user.findUnique({ where: { id: userId } });
-      if (target?.role === "SECRETARIAT") {
-        const others = await db.user.count({ where: { role: "SECRETARIAT", active: true, id: { not: userId } } });
-        if (others === 0) throw new Error("There must always be at least one active secretariat account.");
-      }
-    }
-    await db.user.update({
-      where: { id: userId },
-      data: {
-        ...(patch.committeeId !== undefined ? { committeeId: patch.committeeId || null } : {}),
-        ...(patch.role ? { role: patch.role } : {}),
-        ...(patch.active !== undefined ? { active: patch.active } : {}),
-        ...(patch.name ? { name: patch.name.trim().slice(0, 80) } : {}),
-      },
-    });
-    refresh();
-    return { ok: true as const };
-  });
-}
-
-export async function resetUserPassword(userId: string): Promise<Result> {
-  return wrap(async () => {
-    await assertSecretariat();
-    const password = tempPassword();
-    const u = await db.user.update({ where: { id: userId }, data: { passwordHash: await hashPassword(password) } });
-    refresh();
-    return { ok: true as const, message: `New password for ${u.email}: ${password}` };
-  });
-}
-
-export async function deleteUser(userId: string): Promise<Result> {
-  return wrap(async () => {
-    const me = await assertSecretariat();
-    if (userId === me.id) throw new Error("You can’t delete your own account.");
-    const target = await db.user.findUnique({ where: { id: userId } });
-    if (target?.role === "SECRETARIAT") {
-      const others = await db.user.count({ where: { role: "SECRETARIAT", active: true, id: { not: userId } } });
-      if (others === 0) throw new Error("There must always be at least one active secretariat account.");
-    }
-    await db.user.delete({ where: { id: userId } });
-    refresh();
-    return { ok: true as const };
-  });
+export async function generateChairCode(): Promise<string> {
+  await assertSecretariat();
+  return tempPassword();
 }
 
 /* ───────────── Committees ───────────── */

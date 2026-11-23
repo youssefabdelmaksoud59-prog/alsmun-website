@@ -9,9 +9,10 @@ export const dynamic = "force-dynamic";
 export default async function ChairLayout({ children, params }: { children: React.ReactNode; params: Promise<{ code: string }> }) {
   const { code } = await params;
   const { user, committee } = await requireCommitteeAccess(code);
-  const [resolutions, amendments] = await Promise.all([
+  const [resolutions, amendments, issues] = await Promise.all([
     db.resolution.count({ where: { committeeId: committee.id, status: "PENDING" } }),
     db.amendment.count({ where: { committeeId: committee.id, status: "PENDING" } }),
+    db.issue.count({ where: { committeeId: committee.id, status: "OPEN", kind: { not: "STRIKE" } } }),
   ]);
   return (
     <>
@@ -26,7 +27,7 @@ export default async function ChairLayout({ children, params }: { children: Reac
             <span className="align-middle">{committee.name}</span>
           </h1>
         </div>
-        <ChairNav code={committee.code} pending={{ resolutions, amendments }} />
+        <ChairNav code={committee.code} pending={{ resolutions, amendments, issues }} />
         <div className="pt-6">{children}</div>
       </div>
     </>

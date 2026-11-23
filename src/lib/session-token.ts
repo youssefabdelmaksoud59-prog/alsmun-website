@@ -1,8 +1,9 @@
 import { SignJWT, jwtVerify } from "jose";
 
 export const SESSION_COOKIE = "alsmun_session";
-export const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+export const SESSION_MAX_AGE = 60 * 60 * 24 * 5; // 5 days, long enough for the whole conference
 
+/** sub is the committee id for chairs and "secretariat" for the secretariat. pv changes when the code changes. */
 export type SessionPayload = { sub: string; role: "SECRETARIAT" | "CHAIR"; pv: number };
 
 function key() {

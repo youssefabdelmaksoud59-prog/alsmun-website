@@ -64,7 +64,7 @@ export async function reviewSubmission(kind: Kind, id: string, decision: Decisio
 export async function setChosen(kind: Kind, id: string, chosen: boolean): Promise<Result> {
   return guard(async () => {
     const item = await loadItem(kind, id);
-    const user = await assertCommitteeAccess(item.committeeId);
+    await assertCommitteeAccess(item.committeeId);
     if (chosen && item.status === "REJECTED") throw new Error("Approve it before choosing it for debate.");
     const type: ScoreType = kind === "resolution" ? "RESOLUTION" : "AMENDMENT";
     await db.$transaction(async (tx) => {
@@ -78,7 +78,7 @@ export async function setChosen(kind: Kind, id: string, chosen: boolean): Promis
         const existing = await tx.scoreEvent.findFirst({ where: link });
         if (!existing) {
           await tx.scoreEvent.create({
-            data: { ...link, committeeId: item.committeeId, delegationId: item.delegationId, type, points: POINTS[type], createdById: user.id },
+            data: { ...link, committeeId: item.committeeId, delegationId: item.delegationId, type, points: POINTS[type] },
           });
         }
       } else {
@@ -94,11 +94,11 @@ export async function setChosen(kind: Kind, id: string, chosen: boolean): Promis
 
 export async function addScore(committeeId: string, delegationId: string, type: "POI" | "SPEECH"): Promise<Result> {
   return guard(async () => {
-    const user = await assertCommitteeAccess(committeeId);
+    await assertCommitteeAccess(committeeId);
     if (type !== "POI" && type !== "SPEECH") throw new Error("Unknown point type.");
     const d = await db.delegation.findFirst({ where: { id: delegationId, committeeId } });
     if (!d) throw new Error("That delegation is not in this committee.");
-    await db.scoreEvent.create({ data: { committeeId, delegationId, type, points: POINTS[type], createdById: user.id } });
+    await db.scoreEvent.create({ data: { committeeId, delegationId, type, points: POINTS[type] } });
     refresh();
     return { ok: true } as const;
   });
@@ -304,7 +304,7 @@ export async function uploadReport(_prev: FormState, fd: FormData): Promise<Form
         mimeType: file.type || "application/octet-stream",
         size: buf.length,
         data: buf,
-        uploadedById: user.id,
+        uploadedBy: user.name,
       },
     });
     refresh();

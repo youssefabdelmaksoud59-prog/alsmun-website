@@ -7,6 +7,13 @@ const nextConfig = {
   },
   serverExternalPackages: ["exceljs"],
   outputFileTracingIncludes: { "/api/scores/[code]/pdf": ["./public/icon-192.png"] },
+  async redirects() {
+    // Old links from before delegates picked their committee first.
+    return ["/amendments", "/resolutions", "/schedule", "/reports"].flatMap((p) => [
+      { source: p, destination: "/delegate", permanent: false },
+      { source: `${p}/:rest*`, destination: "/delegate", permanent: false },
+    ]);
+  },
   async headers() {
     return [
       {

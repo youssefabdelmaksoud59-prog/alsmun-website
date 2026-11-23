@@ -7,11 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  SECRETARIAT
-  CHAIR
-}
-
 enum ReviewStatus {
   PENDING
   APPROVED
@@ -37,22 +32,6 @@ enum AttendanceStatus {
   ABSENT
 }
 
-model User {
-  id           String     @id @default(cuid())
-  email        String     @unique
-  name         String
-  passwordHash String
-  role         Role
-  active       Boolean    @default(true)
-  committeeId  String?
-  committee    Committee? @relation(fields: [committeeId], references: [id], onDelete: SetNull)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-
-  scoreEvents ScoreEvent[]
-  reports     ChairReport[]
-}
-
 model Committee {
   id        String   @id @default(cuid())
   code      String   @unique
@@ -60,9 +39,11 @@ model Committee {
   /// One agenda topic per line
   topics    String   @default("")
   sortOrder Int      @default(0)
+  /// Access code chairs of this committee enter to open their portal. Set by the secretariat.
+  chairCode String?  @unique
   createdAt DateTime @default(now())
 
-  chairs             User[]
+  issues             Issue[]
   delegations        Delegation[]
   resolutions        Resolution[]
   amendments         Amendment[]
@@ -83,6 +64,7 @@ model Delegation {
   amendments  Amendment[]
   scoreEvents ScoreEvent[]
   attendance  AttendanceRecord[]
+  issues      Issue[]
 
   @@unique([committeeId, name])
 }
@@ -159,8 +141,6 @@ model ScoreEvent {
   amendment    Amendment?  @relation(fields: [amendmentId], references: [id], onDelete: Cascade)
   resolutionId String?     @unique
   resolution   Resolution? @relation(fields: [resolutionId], references: [id], onDelete: Cascade)
-  createdById  String?
-  createdBy    User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
   createdAt    DateTime    @default(now())
 
   @@index([committeeId, createdAt])
@@ -212,12 +192,44 @@ model ChairReport {
   mimeType     String
   size         Int
   data         Bytes
-  uploadedById String?
-  uploadedBy   User?     @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  /// "GA chair" or "Secretariat"
+  uploadedBy   String    @default("")
   createdAt    DateTime  @default(now())
 }
 
 model AppSetting {
   key   String @id
   value String
+}
+
+enum IssueKind {
+  STRIKE
+  EQUIPMENT
+  OTHER
+}
+
+enum IssueStatus {
+  OPEN
+  RESOLVED
+}
+
+/// Problems the secretariat needs to see: strikes given to delegations, missing equipment, anything else.
+model Issue {
+  id           String      @id @default(cuid())
+  kind         IssueKind
+  status       IssueStatus @default(OPEN)
+  /// null = raised by the secretariat for the whole conference
+  committeeId  String?
+  committee    Committee?  @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  /// Required for strikes: the delegation that received it
+  delegationId String?
+  delegation   Delegation? @relation(fields: [delegationId], references: [id], onDelete: Cascade)
+  details      String
+  reportedBy   String      @default("")
+  resolution   String      @default("")
+  createdAt    DateTime    @default(now())
+  resolvedAt   DateTime?
+
+  @@index([status, createdAt])
+  @@index([committeeId])
 }

@@ -6,7 +6,8 @@ import clsx from "clsx";
 
 const ITEMS = [
   { href: "/secretariat", label: "Overview", exact: true },
-  { href: "/secretariat/users", label: "Chairs & staff" },
+  { href: "/secretariat/issues", label: "Problems" },
+  { href: "/secretariat/codes", label: "Access codes" },
   { href: "/secretariat/committees", label: "Committees" },
   { href: "/secretariat/schedule", label: "Schedule" },
   { href: "/secretariat/settings", label: "Conference settings" },

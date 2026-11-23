@@ -7,12 +7,13 @@ import { ResolutionDocument } from "@/components/resolution-document";
 import { AmendmentCard } from "@/components/amendment-card";
 import { StatusBadge } from "@/components/ui";
 import { PrintButton } from "@/components/print-button";
+import { delegateBase } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
-async function load(id: string) {
+async function load(id: string, code: string) {
   return db.resolution.findFirst({
-    where: { id, status: "APPROVED" },
+    where: { id, status: "APPROVED", committee: { code: decodeURIComponent(code) } },
     include: {
       committee: true,
       delegation: true,
@@ -25,22 +26,24 @@ async function load(id: string) {
   });
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  const r = await load((await params).id);
+export async function generateMetadata({ params }: { params: Promise<{ id: string; code: string }> }): Promise<Metadata> {
+  const { id, code } = await params;
+  const r = await load(id, code);
   return { title: r ? resolutionRef(r.committee.code, r.number) : "Resolution" };
 }
 
-export default async function ResolutionPage({ params }: { params: Promise<{ id: string }> }) {
-  const r = await load((await params).id);
+export default async function ResolutionPage({ params }: { params: Promise<{ id: string; code: string }> }) {
+  const { id, code } = await params;
+  const r = await load(id, code);
   if (!r) notFound();
   const ref = resolutionRef(r.committee.code, r.number);
   return (
     <div className="container-page max-w-4xl">
       <div className="no-print flex flex-wrap items-center justify-between gap-3 pb-4 pt-8">
-        <Link href={`/resolutions?committee=${encodeURIComponent(r.committee.code)}`} className="text-sm font-semibold text-navy-700 hover:underline">← {r.committee.code} resolutions</Link>
+        <Link href={`${delegateBase(r.committee.code)}/resolutions`} className="text-sm font-semibold text-navy-700 hover:underline">← All resolutions</Link>
         <div className="flex gap-2">
           <PrintButton />
-          <Link href={`/amendments/submit?committee=${encodeURIComponent(r.committee.code)}&resolution=${r.id}`} className="btn-gold btn-sm">Amend this resolution</Link>
+          <Link href={`${delegateBase(r.committee.code)}/amendments/submit?resolution=${r.id}`} className="btn-gold btn-sm">Amend this resolution</Link>
         </div>
       </div>
       <div className="card card-pad">

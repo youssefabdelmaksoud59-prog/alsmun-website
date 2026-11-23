@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
-import { getCommittees } from "@/lib/settings";
-import { CommitteeTabs, EmptyState, PageHeader } from "@/components/ui";
+import { notFound } from "next/navigation";
+import { getCommitteeByCode } from "@/lib/settings";
+import { EmptyState, PageHeader } from "@/components/ui";
 import { dayKey, formatDay, formatTime } from "@/lib/time";
 import { AutoRefresh } from "@/components/auto-refresh";
 
 export const metadata: Metadata = { title: "Schedule" };
 export const dynamic = "force-dynamic";
 
-export default async function SchedulePage({ searchParams }: { searchParams: Promise<{ committee?: string }> }) {
-  const { committee: code } = await searchParams;
-  const committees = await getCommittees();
-  const active = committees.find((c) => c.code === code);
+export default async function SchedulePage({ params }: { params: Promise<{ code: string }> }) {
+  const active = await getCommitteeByCode((await params).code);
+  if (!active) notFound();
   const items = await db.scheduleItem.findMany({
-    where: active ? { OR: [{ committeeId: null }, { committeeId: active.id }] } : {},
+    where: { OR: [{ committeeId: null }, { committeeId: active.id }] },
     orderBy: [{ startsAt: "asc" }, { title: "asc" }],
     include: { committee: { select: { code: true } } },
   });
@@ -27,8 +27,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   return (
     <div className="container-page max-w-4xl">
       <AutoRefresh seconds={60} />
-      <PageHeader eyebrow="Delegate portal" title="Schedule" description="Pick your committee to see only the sessions that apply to you, plus events for everyone." />
-      <CommitteeTabs committees={committees} active={active?.code} basePath="/schedule" allLabel="Everything" />
+      <PageHeader eyebrow={active.code} title="Schedule" description={`Sessions for ${active.code} and events for all delegates.`} />
       {items.length === 0 ? (
         <EmptyState title="The schedule hasn't been published yet">Check back soon.</EmptyState>
       ) : (

@@ -9,7 +9,7 @@ export default async function ChairReportsPage({ params }: { params: Promise<{ c
   const reports = await db.chairReport.findMany({
     where: { committeeId: committee.id },
     orderBy: { createdAt: "desc" },
-    select: { id: true, title: true, fileName: true, size: true, createdAt: true, uploadedBy: { select: { name: true } } },
+    select: { id: true, title: true, fileName: true, size: true, createdAt: true, uploadedBy: true },
   });
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -26,7 +26,7 @@ export default async function ChairReportsPage({ params }: { params: Promise<{ c
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
                 <div className="min-w-0">
                   <a href={`/api/reports/${r.id}`} className="font-semibold text-navy-900 hover:underline">{r.title}</a>
-                  <p className="text-xs text-slate-500">{r.fileName} · {formatBytes(r.size)} · {formatDateTime(r.createdAt)}{r.uploadedBy ? ` · ${r.uploadedBy.name}` : ""}</p>
+                  <p className="text-xs text-slate-500">{r.fileName} · {formatBytes(r.size)} · {formatDateTime(r.createdAt)}{r.uploadedBy ? ` · ${r.uploadedBy}` : ""}</p>
                 </div>
                 <DeleteReportButton id={r.id} title={r.title} />
               </li>
