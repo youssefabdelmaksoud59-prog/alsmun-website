@@ -44,6 +44,7 @@ model Committee {
   createdAt DateTime @default(now())
 
   issues             Issue[]
+  crisisUpdates      CrisisUpdate[]
   delegations        Delegation[]
   resolutions        Resolution[]
   amendments         Amendment[]
@@ -232,4 +233,27 @@ model Issue {
 
   @@index([status, createdAt])
   @@index([committeeId])
+}
+
+/// Urgent notice from the secretariat, shown at the top of every committee's pages.
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  body      String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+/// Crisis news for one committee (e.g. SC, ICJ). Hidden from delegates until publishAt.
+model CrisisUpdate {
+  id          String    @id @default(cuid())
+  committeeId String
+  committee   Committee @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  title       String
+  body        String
+  publishAt   DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+
+  @@index([committeeId, publishAt])
 }

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { delegateBase, getCommitteeByCode } from "@/lib/settings";
 import { formatDay, formatTime } from "@/lib/time";
+import { AutoRefresh } from "@/components/auto-refresh";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,8 @@ const ACTIONS = [
   { path: "/schedule", title: "Schedule", body: "Your sessions, breaks and ceremonies.", icon: "M4 6h16v14H4zM4 10h16M9 3v4M15 3v4" },
   { path: "/reports", title: "Chair reports", body: "Download your chairs’ reports.", icon: "M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" },
 ];
+
+const CRISIS_ACTION = { path: "/crisis", title: "Crisis updates", body: "News from the secretariat for your committee.", icon: "M12 9v4m0 4h.01M10.3 3.9L2 18a2 2 0 001.7 3h16.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z", accent: false };
 
 export default async function DelegateHub({ params }: { params: Promise<{ code: string }> }) {
   const committee = await getCommitteeByCode((await params).code);
@@ -39,18 +42,22 @@ export default async function DelegateHub({ params }: { params: Promise<{ code: 
       db.amendment.count({ where: { committeeId: committee.id, status: "APPROVED" } }),
       db.resolution.count({ where: { committeeId: committee.id, status: "APPROVED" } }),
       db.chairReport.count({ where: { committeeId: committee.id } }),
+      db.crisisUpdate.count({ where: { committeeId: committee.id, publishAt: { lte: new Date() } } }),
     ]),
   ]);
-  const badge: Record<string, number> = { "/amendments": counts[0], "/resolutions": counts[1], "/reports": counts[2] };
+  const badge: Record<string, number> = { "/amendments": counts[0], "/resolutions": counts[1], "/reports": counts[2], "/crisis": counts[3] };
+  // The crisis feed only matters once the secretariat has published something to this committee.
+  const actions = counts[3] > 0 ? [...ACTIONS, CRISIS_ACTION] : ACTIONS;
 
   return (
     <div className="container-page">
+      <AutoRefresh seconds={20} />
       <div className="pb-6 pt-8 sm:pt-10">
         <p className="mb-1 text-xs font-bold uppercase tracking-[0.18em] text-gold-600">Delegate portal</p>
         <h1 className="text-2xl font-bold sm:text-3xl">{committee.name}</h1>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {ACTIONS.map((a) => (
+        {actions.map((a) => (
           <Link key={a.path} href={base + a.path} className="card group flex gap-4 p-5 transition hover:-translate-y-0.5 hover:border-navy-300 hover:shadow-lg">
             <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${a.accent ? "bg-gold-400 text-navy-950" : "bg-navy-50 text-navy-700"}`} aria-hidden>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={a.icon} /></svg>
@@ -67,7 +74,7 @@ export default async function DelegateHub({ params }: { params: Promise<{ code: 
       </div>
       <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-500">
         <Link href="/track" className="font-semibold text-navy-700 hover:underline">Check a submission with your tracking code</Link>
-        <Link href="/guide" className="font-semibold text-navy-700 hover:underline">THIMUN format guide</Link>
+        <Link href="/resources" className="font-semibold text-navy-700 hover:underline">Rules, motions &amp; THIMUN guide</Link>
       </div>
 
       <section className="mt-10 max-w-2xl" aria-labelledby="up-h">

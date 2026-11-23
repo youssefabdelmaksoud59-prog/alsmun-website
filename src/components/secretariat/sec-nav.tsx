@@ -9,6 +9,7 @@ const ITEMS = [
   { href: "/secretariat/issues", label: "Problems" },
   { href: "/secretariat/codes", label: "Access codes" },
   { href: "/secretariat/committees", label: "Committees" },
+  { href: "/secretariat/broadcast", label: "Announcements & crisis" },
   { href: "/secretariat/schedule", label: "Schedule" },
   { href: "/secretariat/settings", label: "Conference settings" },
   { href: "/chair", label: "Chair tools", exact: true },

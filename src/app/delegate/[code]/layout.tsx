@@ -2,6 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCommitteeByCode } from "@/lib/settings";
 import { RememberCommittee } from "@/components/portal/remember-committee";
+import { AnnouncementBanners, LatestCrisis } from "@/components/broadcast-banners";
+
+export const dynamic = "force-dynamic";
 
 export default async function DelegateCommitteeLayout({ children, params }: { children: React.ReactNode; params: Promise<{ code: string }> }) {
   const committee = await getCommitteeByCode((await params).code);
@@ -18,6 +21,8 @@ export default async function DelegateCommitteeLayout({ children, params }: { ch
           <Link href="/delegate" className="shrink-0 font-semibold text-navy-700 hover:underline">Change committee</Link>
         </div>
       </div>
+      <AnnouncementBanners />
+      <LatestCrisis committeeId={committee.id} href={`/delegate/${encodeURIComponent(committee.code)}/crisis`} />
       {children}
     </>
   );

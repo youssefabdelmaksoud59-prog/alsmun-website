@@ -12,6 +12,8 @@ The home page asks one question: **are you a delegate, a chair or the secretaria
 - Every submission asks for the committee and delegation, and returns a **tracking code** to check its status and read the chair's note.
 - View **approved** amendments and resolutions only. Pending and rejected submissions stay private.
 - View the **schedule** (filtered by committee, with "Now" highlighting) and download **chair reports**.
+- See **announcements** from the secretariat at the top of every committee page, and the committee's **crisis updates** (live feed that refreshes on its own).
+- **Resources** page: rules of procedure, a glossary of points and motions, and the THIMUN guide.
 
 **Chairs (chair code)**: each committee has its own chair code, set by the secretariat.
 - Review queues for amendments and resolutions: approve, reject with a note, move back to review.
@@ -28,6 +30,8 @@ The home page asks one question: **are you a delegate, a chair or the secretaria
 - Everything a chair can do, for every committee.
 - Set or change each committee's **chair code** and the **secretariat code** on the site. Changing a code signs out whoever used the old one.
 - Manage committees, the schedule, and conference settings (name, dates, venue, home-page announcement).
+- **Announcements**: push urgent notices (room changes, delays) to every committee's delegate and chair pages.
+- **Crisis updates**: post news to one committee, right away or at a set time. Scheduled updates stay hidden from delegates until then; that committee's chairs see them in advance.
 
 ## Tech stack
 

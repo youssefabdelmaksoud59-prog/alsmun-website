@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { ChairNav } from "@/components/chair/chair-nav";
 import { StaffBar } from "@/components/staff-bar";
 import Link from "next/link";
+import { AnnouncementBanners, LatestCrisis } from "@/components/broadcast-banners";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,8 @@ export default async function ChairLayout({ children, params }: { children: Reac
       <StaffBar user={user}>
         {user.role === "SECRETARIAT" && <Link href="/chair" className="btn-ghost btn-sm">All committees</Link>}
       </StaffBar>
+      <AnnouncementBanners />
+      <LatestCrisis committeeId={committee.id} href={`/chair/${encodeURIComponent(committee.code)}/crisis`} />
       <div className="container-page">
         <div className="pb-3 pt-6">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-gold-600">Chair panel</p>

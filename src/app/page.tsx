@@ -81,7 +81,7 @@ export default async function Home() {
       <p className="container-page mt-8 text-center text-sm text-slate-500">
         Submitted something? <Link href="/track" className="font-semibold text-navy-700 hover:underline">Check its status with your tracking code</Link>
         {" · "}
-        <Link href="/guide" className="font-semibold text-navy-700 hover:underline">THIMUN format guide</Link>
+        <Link href="/resources" className="font-semibold text-navy-700 hover:underline">Rules, motions &amp; THIMUN guide</Link>
       </p>
     </>
   );

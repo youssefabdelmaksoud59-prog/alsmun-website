@@ -9,10 +9,14 @@ const nextConfig = {
   outputFileTracingIncludes: { "/api/scores/[code]/pdf": ["./public/icon-192.png"] },
   async redirects() {
     // Old links from before delegates picked their committee first.
-    return ["/amendments", "/resolutions", "/schedule", "/reports"].flatMap((p) => [
-      { source: p, destination: "/delegate", permanent: false },
-      { source: `${p}/:rest*`, destination: "/delegate", permanent: false },
-    ]);
+    return [
+      ...["/amendments", "/resolutions", "/schedule", "/reports"].flatMap((p) => [
+        { source: p, destination: "/delegate", permanent: false },
+        { source: `${p}/:rest*`, destination: "/delegate", permanent: false },
+      ]),
+      // The THIMUN guide now lives on the Resources page.
+      { source: "/guide", destination: "/resources#thimun-guide", permanent: false },
+    ];
   },
   async headers() {
     return [

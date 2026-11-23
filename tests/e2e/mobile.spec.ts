@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-const PAGES = ["/", "/delegate", "/delegate/GA", "/delegate/GA/amendments", "/delegate/GA/amendments/submit", "/delegate/GA/resolutions", "/delegate/GA/resolutions/submit", "/delegate/GA/schedule", "/delegate/GA/reports", "/track", "/guide", "/login/chair", "/login/secretariat"];
+const PAGES = ["/", "/delegate", "/delegate/GA", "/delegate/GA/amendments", "/delegate/GA/amendments/submit", "/delegate/GA/resolutions", "/delegate/GA/resolutions/submit", "/delegate/GA/schedule", "/delegate/GA/reports", "/delegate/GA/crisis", "/track", "/resources", "/login/chair", "/login/secretariat"];
 
 for (const path of PAGES) {
   test(`no horizontal scroll on ${path}`, async ({ page }) => {
@@ -24,7 +24,7 @@ test("guide is available on the submit page on phones", async ({ page }) => {
   await expect(page.locator("details").getByText("How a THIMUN resolution is built")).toBeVisible();
 });
 
-const STAFF_PAGES = ["/chair/GA/issues", "/chair/GA", "/chair/GA/amendments", "/chair/GA/resolutions", "/chair/GA/points", "/chair/GA/attendance", "/chair/GA/scores", "/chair/GA/reports", "/chair/GA/setup"];
+const STAFF_PAGES = ["/chair/GA/issues", "/chair/GA", "/chair/GA/amendments", "/chair/GA/resolutions", "/chair/GA/points", "/chair/GA/attendance", "/chair/GA/scores", "/chair/GA/reports", "/chair/GA/setup", "/chair/GA/crisis"];
 
 test("no horizontal scroll on chair pages", async ({ page }) => {
   await page.goto("/login/chair");
@@ -43,7 +43,7 @@ test("no horizontal scroll on secretariat pages", async ({ page }) => {
   await page.getByLabel("Secretariat code").fill("sec-demo-code");
   await page.getByRole("button", { name: "Open secretariat" }).click();
   await page.waitForURL((u) => u.pathname === "/secretariat");
-  for (const path of ["/secretariat", "/secretariat/issues", "/secretariat/codes", "/secretariat/committees", "/secretariat/schedule", "/secretariat/settings", "/chair"]) {
+  for (const path of ["/secretariat", "/secretariat/issues", "/secretariat/codes", "/secretariat/committees", "/secretariat/broadcast", "/secretariat/schedule", "/secretariat/settings", "/chair"]) {
     await page.goto(path);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow, path).toBeLessThanOrEqual(0);

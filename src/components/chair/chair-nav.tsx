@@ -15,6 +15,7 @@ export function ChairNav({ code, pending }: { code: string; pending: { resolutio
     { href: `${base}/attendance`, label: "Attendance" },
     { href: `${base}/scores`, label: "Score sheet" },
     { href: `${base}/reports`, label: "Reports" },
+    { href: `${base}/crisis`, label: "Crisis" },
     { href: `${base}/issues`, label: "Strikes & problems", count: pending.issues },
     { href: `${base}/setup`, label: "Delegations & topics" },
   ];

@@ -9,7 +9,7 @@ export function SiteFooter({ name }: { name: string }) {
         </p>
         <nav className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Footer">
           <Link href="/track" className="hover:text-navy-800">Track a submission</Link>
-          <Link href="/guide" className="hover:text-navy-800">THIMUN guide</Link>
+          <Link href="/resources" className="hover:text-navy-800">Resources</Link>
           <Link href="/delegate" className="hover:text-navy-800">Delegate portal</Link>
         </nav>
       </div>

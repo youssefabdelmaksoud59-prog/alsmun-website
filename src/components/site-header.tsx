@@ -10,7 +10,7 @@ const ROLE_NAV = [
   { href: "/delegate", label: "Delegate" },
   { href: "/login/chair", label: "Chair" },
   { href: "/login/secretariat", label: "Secretariat" },
-  { href: "/guide", label: "THIMUN guide" },
+  { href: "/resources", label: "Resources" },
 ];
 
 /** Inside a committee's delegate portal, the menu switches to that committee's pages. */
@@ -23,7 +23,7 @@ function navFor(pathname: string) {
     { href: `${base}/resolutions`, label: "Resolutions" },
     { href: `${base}/schedule`, label: "Schedule" },
     { href: `${base}/reports`, label: "Chair reports" },
-    { href: "/guide", label: "THIMUN guide" },
+    { href: "/resources", label: "Resources" },
   ];
 }
 
