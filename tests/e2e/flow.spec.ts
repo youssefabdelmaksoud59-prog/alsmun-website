@@ -271,11 +271,13 @@ test("chair uploads a report that delegates can download", async ({ page }) => {
   expect(file.headers()["content-disposition"]).toContain("report.pdf");
 });
 
-test("secretariat sets chair codes, schedule and settings", async ({ page }) => {
-  await login(page, "secretariat");
+test("owner sets chair codes; secretariat sets schedule and settings", async ({ page }) => {
+  await page.goto("/owner");
+  await page.getByLabel("Owner code").fill("owner-demo-code");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.waitForURL((u) => u.pathname === "/secretariat/codes");
 
   const hrcCode = `hrc-${uid}-code`;
-  await page.goto("/secretariat/codes");
   const row = (code: string) => page.getByTestId("chair-code-row").filter({ has: page.getByLabel(`Chair code for ${code}`, { exact: true }) });
   await page.getByLabel("Chair code for HRC", { exact: true }).fill(hrcCode);
   await row("HRC").getByRole("button", { name: "Save" }).click();
@@ -284,6 +286,8 @@ test("secretariat sets chair codes, schedule and settings", async ({ page }) => 
   await row("SC").getByRole("button", { name: "Save" }).click();
   await expect(page.getByText("GA already uses that code")).toBeVisible();
 
+  await logout(page);
+  await login(page, "secretariat");
   await page.goto("/secretariat/schedule");
   await page.getByLabel("Title").fill(`Closing ceremony ${uid}`);
   await page.getByLabel("Starts").fill("2026-12-06T17:00");
@@ -312,4 +316,21 @@ test("secretariat sets chair codes, schedule and settings", async ({ page }) => 
   await page.getByLabel("Chair code").fill(hrcCode.toUpperCase());
   await page.getByRole("button", { name: "Open chair portal" }).click();
   await expect(page).toHaveURL(/\/chair\/HRC$/);
+});
+
+test("only the owner can change access codes", async ({ page }) => {
+  await login(page, "secretariat");
+  await expect(page.getByRole("link", { name: "Access codes" })).toHaveCount(0);
+  await page.goto("/secretariat/codes");
+  await expect(page).toHaveURL(/\/secretariat$/);
+
+  await page.goto("/");
+  await page.getByRole("link", { name: "Site owner" }).click();
+  await expect(page).toHaveURL(/\/owner$/);
+  await page.getByLabel("Owner code").fill("owner-demo-code");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.waitForURL((u) => u.pathname === "/secretariat/codes");
+  await expect(page.getByLabel("Chair code for GA")).toHaveValue("ga-demo-code");
+  await expect(page.getByRole("heading", { name: "Change the secretariat code" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Change your owner code" })).toBeVisible();
 });

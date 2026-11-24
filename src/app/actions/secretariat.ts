@@ -5,7 +5,7 @@ import { randomBytes } from "crypto";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { MIN_CODE_LENGTH, assertSecretariat, checkSecretariatCode, normaliseAccessCode } from "@/lib/auth";
+import { MIN_CODE_LENGTH, assertOwner, assertSecretariat, checkOwnerCode, checkSecretariatCode, normaliseAccessCode } from "@/lib/auth";
 import { fieldErrors, str, type FormState } from "@/lib/form";
 import { zonedToUtc } from "@/lib/time";
 import { DEFAULT_SETTINGS } from "@/lib/settings";
@@ -40,7 +40,7 @@ async function wrap<T extends { ok: boolean }>(fn: () => Promise<T>): Promise<T 
 
 export async function setChairCode(committeeId: string, rawCode: string): Promise<Result> {
   return wrap(async () => {
-    await assertSecretariat();
+    await assertOwner();
     const code = normaliseAccessCode(rawCode);
     if (code && code.length < MIN_CODE_LENGTH) throw new Error(`Use at least ${MIN_CODE_LENGTH} characters.`);
     if (code.length > 64) throw new Error("Keep it under 64 characters.");
@@ -48,6 +48,7 @@ export async function setChairCode(committeeId: string, rawCode: string): Promis
       const clash = await db.committee.findFirst({ where: { chairCode: { equals: code, mode: "insensitive" }, id: { not: committeeId } } });
       if (clash) throw new Error(`${clash.code} already uses that code. Each committee needs its own.`);
       if ((await checkSecretariatCode(code)).ok) throw new Error("That is the secretariat code. Pick a different one.");
+      if ((await checkOwnerCode(code)).ok) throw new Error("That is the owner code. Pick a different one.");
     }
     const c = await db.committee.update({ where: { id: committeeId }, data: { chairCode: code || null } });
     refresh();
@@ -56,7 +57,7 @@ export async function setChairCode(committeeId: string, rawCode: string): Promis
 }
 
 export async function generateChairCode(): Promise<string> {
-  await assertSecretariat();
+  await assertOwner();
   return tempPassword();
 }
 

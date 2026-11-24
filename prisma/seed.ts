@@ -75,7 +75,12 @@ async function main() {
     create: { key: "secretariatCodeHash", value: await bcrypt.hash("sec-demo-code", 11) },
     update: {},
   });
-  console.log("Demo codes: GA chair ga-demo-code, SC chair sc-demo-code, secretariat sec-demo-code");
+  await db.appSetting.upsert({
+    where: { key: "ownerCodeHash" },
+    create: { key: "ownerCodeHash", value: await bcrypt.hash("owner-demo-code", 11) },
+    update: {},
+  });
+  console.log("Demo codes: GA chair ga-demo-code, SC chair sc-demo-code, secretariat sec-demo-code, owner owner-demo-code");
 }
 
 main()

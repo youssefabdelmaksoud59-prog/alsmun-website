@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
-import { ChairCodeRow, SecretariatCodeForm } from "@/components/secretariat/codes";
+import { requireOwner } from "@/lib/auth";
+import { ChairCodeRow, OwnerCodeForm, SecretariatCodeForm } from "@/components/secretariat/codes";
 
 export const metadata: Metadata = { title: "Access codes" };
 
+export const dynamic = "force-dynamic";
+
 export default async function CodesPage() {
+  await requireOwner();
   const committees = await db.committee.findMany({
     orderBy: [{ sortOrder: "asc" }, { code: "asc" }],
     select: { id: true, code: true, name: true, chairCode: true },
@@ -20,7 +24,10 @@ export default async function CodesPage() {
           {committees.map((c) => <ChairCodeRow key={c.id} committee={c} />)}
         </ul>
       </section>
-      <div className="card card-pad h-fit"><SecretariatCodeForm /></div>
+      <div className="space-y-6">
+        <div className="card card-pad h-fit"><SecretariatCodeForm /></div>
+        <div className="card card-pad h-fit"><OwnerCodeForm /></div>
+      </div>
     </div>
   );
 }

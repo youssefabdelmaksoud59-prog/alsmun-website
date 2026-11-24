@@ -3,22 +3,25 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { chairLogin, secretariatLogin } from "@/app/actions/auth";
+import { chairLogin, ownerLogin, secretariatLogin } from "@/app/actions/auth";
 import { Alert } from "@/components/ui";
 
-export function CodeForm({ kind, next }: { kind: "chair" | "secretariat"; next: string }) {
-  const [state, action, pending] = useActionState(kind === "chair" ? chairLogin : secretariatLogin, null);
+const ACTIONS = { chair: chairLogin, secretariat: secretariatLogin, owner: ownerLogin };
+const LABELS = { chair: ["Chair code", "Open chair portal"], secretariat: ["Secretariat code", "Open secretariat"], owner: ["Owner code", "Continue"] };
+
+export function CodeForm({ kind, next }: { kind: "chair" | "secretariat" | "owner"; next: string }) {
+  const [state, action, pending] = useActionState(ACTIONS[kind], null);
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="next" value={next} />
       {state && !state.ok && <Alert kind="error">{state.error}</Alert>}
       <div>
-        <label htmlFor="code" className="label">{kind === "chair" ? "Chair code" : "Secretariat code"}</label>
+        <label htmlFor="code" className="label">{LABELS[kind][0]}</label>
         <input id="code" name="code" type="password" required autoFocus autoComplete="off" autoCapitalize="off" spellCheck={false}
           className="input text-center font-mono text-lg tracking-widest" />
       </div>
       <button type="submit" className={`${kind === "chair" ? "btn-primary" : "btn-gold"} w-full`} disabled={pending}>
-        {pending ? "Checking…" : kind === "chair" ? "Open chair portal" : "Open secretariat"}
+        {pending ? "Checking…" : LABELS[kind][1]}
       </button>
     </form>
   );
