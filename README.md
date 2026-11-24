@@ -37,19 +37,17 @@ The home page asks one question: **are you a delegate, a chair or the secretaria
 
 Next.js 15 (App Router, server actions) · TypeScript · PostgreSQL with Prisma · Tailwind CSS · ExcelJS and pdf-lib for exports. Sessions are signed, http-only cookies (HS256 JWT). The secretariat code is stored bcrypt-hashed. Chair codes are stored as typed so the secretariat can look them up. Wrong codes are rate limited per device.
 
-## Deploy (about 15 minutes, free tiers)
+## Deploy (about 20 minutes, free tiers)
 
-1. **Database.** Create a free PostgreSQL database at [Neon](https://neon.tech) (or Supabase, Railway, etc.) and copy its connection string (on Neon, turn **Connection pooling off** so database migrations work).
-2. **Code.** Push this folder to a GitHub repository.
-3. **Hosting.** Import the repository at [Vercel](https://vercel.com/new). Add two environment variables:
-   - `DATABASE_URL`: the connection string from step 1
-   - `SESSION_SECRET`: a long random string (`openssl rand -base64 48`)
-   - optional `CONFERENCE_TIMEZONE` (defaults to `Africa/Cairo`)
-   
-   Set the **Build Command** to `npx prisma migrate deploy && npm run build`, then deploy.
-4. **Committees.** From your computer, with `DATABASE_URL` set to the same database, run `npm install` then `npm run db:seed`. This creates the 11 committees (GA, SC, HRC, ICJ, UNODC, SPECPOL, ECOSOC, HSC, SCMA, JA A, JA B). It is safe to run more than once.
-5. **Secretariat code.** Open `https://your-site/setup` and choose the secretariat code. The page locks itself once a code exists. (Alternatively set a `SECRETARIAT_CODE` environment variable.)
-6. **Set up.** In *Secretariat → Access codes*, give each committee a chair code (type one or press Generate) and hand them to the chairs. Fix committee full names and topics under *Committees*, and enter the schedule. Chairs then paste their delegation roster under *Delegations & topics*.
+1. **Code.** Put this folder in a GitHub repository.
+2. **Hosting.** Import the repository at [Vercel](https://vercel.com/new) and deploy once (the first build fails without a database; that's expected).
+3. **Database.** In the Vercel project, open **Storage → Create Database → Neon** (region: Frankfurt) and connect it to the project. This adds `DATABASE_URL` and `DATABASE_URL_UNPOOLED` automatically.
+4. **Secret.** Under **Settings → Environment Variables** add `SESSION_SECRET`, a random string of at least 32 characters. Optional: `CONFERENCE_TIMEZONE` (defaults to `Africa/Cairo`).
+5. **Redeploy.** Every deploy runs `scripts/vercel-build.sh`, which applies database migrations over the unpooled connection, creates the 11 committees the first time (never again, so deleted committees stay deleted), then builds the site. `vercel.json` pins the functions to Frankfurt (`fra1`), next to the database.
+6. **Secretariat code.** Open `https://your-site/setup` and choose the secretariat code. The page locks itself once a code exists. (Alternatively set a `SECRETARIAT_CODE` environment variable.)
+7. **Set up.** In *Secretariat → Access codes*, give each committee a chair code and hand them to the chairs. Fix committee full names and topics under *Committees*, and enter the schedule. Chairs then paste their delegation roster under *Delegations & topics*.
+
+Using a database from somewhere else? Set `DATABASE_URL` to its connection string (and `DATABASE_URL_UNPOOLED` to a direct, non-pooled one if `DATABASE_URL` goes through a pooler).
 
 **Self-hosting instead:** `docker build -t alsmun .` then run it with the same environment variables. The container applies migrations on start.
 

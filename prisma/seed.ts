@@ -3,6 +3,8 @@
  *
  *   npm run db:seed              committees only
  *   npm run db:seed -- --demo    also adds demo delegations, a schedule and demo access codes
+ *   npm run db:seed -- --if-empty  only when there are no committees yet (used on every deploy,
+ *                                  so committees the secretariat deletes don't come back)
  */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -30,6 +32,10 @@ const DEMO_DELEGATIONS = [
 
 async function main() {
   const demo = process.argv.includes("--demo");
+  if (process.argv.includes("--if-empty") && (await db.committee.count()) > 0) {
+    console.log("Committees already exist; leaving them as they are.");
+    return;
+  }
   for (const [i, [code, name]] of COMMITTEES.entries()) {
     await db.committee.upsert({ where: { code }, create: { code, name, sortOrder: i * 10 }, update: {} });
   }
