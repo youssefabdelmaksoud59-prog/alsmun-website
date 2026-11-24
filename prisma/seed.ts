@@ -20,9 +20,9 @@ const COMMITTEES: [code: string, name: string][] = [
   ["SPECPOL", "Special Political and Decolonization Committee"],
   ["ECOSOC", "Economic and Social Council"],
   ["HSC", "Historical Security Council"],
-  ["SCMA", "SCMA"],
-  ["JA A", "JA A"],
-  ["JA B", "JA B"],
+  ["SCMA", "Secret Council of Mysterious Affairs"],
+  ["JA A", "Junior Assembly A"],
+  ["JA B", "Junior Assembly B"],
 ];
 
 const DEMO_DELEGATIONS = [
