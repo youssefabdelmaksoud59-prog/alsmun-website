@@ -20,9 +20,9 @@ const COMMITTEES: [code: string, name: string][] = [
   ["SPECPOL", "Special Political and Decolonization Committee"],
   ["ECOSOC", "Economic and Social Council"],
   ["HSC", "Historical Security Council"],
-  ["SCMA", "SCMA"],
-  ["JA A", "JA A"],
-  ["JA B", "JA B"],
+  ["SCMA", "Secret Council of Mysterious Affairs"],
+  ["JA A", "Junior Assembly A"],
+  ["JA B", "Junior Assembly B"],
 ];
 
 const DEMO_DELEGATIONS = [
@@ -75,7 +75,12 @@ async function main() {
     create: { key: "secretariatCodeHash", value: await bcrypt.hash("sec-demo-code", 11) },
     update: {},
   });
-  console.log("Demo codes: GA chair ga-demo-code, SC chair sc-demo-code, secretariat sec-demo-code");
+  await db.appSetting.upsert({
+    where: { key: "ownerCodeHash" },
+    create: { key: "ownerCodeHash", value: await bcrypt.hash("owner-demo-code", 11) },
+    update: {},
+  });
+  console.log("Demo codes: GA chair ga-demo-code, SC chair sc-demo-code, secretariat sec-demo-code, owner owner-demo-code");
 }
 
 main()

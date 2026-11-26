@@ -28,14 +28,17 @@ The home page asks one question: **are you a delegate, a chair or the secretaria
 **Secretariat (secretariat code)**
 - Opens on **Needs attention**: open problems, strikes per delegation (3 or more highlighted), and setup still to finish.
 - Everything a chair can do, for every committee.
-- Set or change each committee's **chair code** and the **secretariat code** on the site. Changing a code signs out whoever used the old one.
+- Everything except access codes. Chair codes and the secretariat code are owner-only.
+
+**Owner (owner code)**
+- Signs in from the faint © line at the bottom of every page (`/owner`). Has full secretariat access, and is the only one who can set chair codes, the secretariat code and the owner code. Changing a code signs out whoever used the old one.
 - Manage committees, the schedule, and conference settings (name, dates, venue, home-page announcement).
 - **Announcements**: push urgent notices (room changes, delays) to every committee's delegate and chair pages.
 - **Crisis updates**: post news to one committee, right away or at a set time. Scheduled updates stay hidden from delegates until then; that committee's chairs see them in advance.
 
 ## Tech stack
 
-Next.js 15 (App Router, server actions) · TypeScript · PostgreSQL with Prisma · Tailwind CSS · ExcelJS and pdf-lib for exports. Sessions are signed, http-only cookies (HS256 JWT). The secretariat code is stored bcrypt-hashed. Chair codes are stored as typed so the secretariat can look them up. Wrong codes are rate limited per device.
+Next.js 15 (App Router, server actions) · TypeScript · PostgreSQL with Prisma · Tailwind CSS · ExcelJS and pdf-lib for exports. Sessions are signed, http-only cookies (HS256 JWT). The owner and secretariat codes are stored bcrypt-hashed. Chair codes are stored as typed so the secretariat can look them up. Wrong codes are rate limited per device.
 
 ## Deploy (about 20 minutes, free tiers)
 
@@ -44,8 +47,8 @@ Next.js 15 (App Router, server actions) · TypeScript · PostgreSQL with Prisma 
 3. **Database.** In the Vercel project, open **Storage → Create Database → Neon** (region: Frankfurt) and connect it to the project. This adds `DATABASE_URL` and `DATABASE_URL_UNPOOLED` automatically.
 4. **Secret.** Under **Settings → Environment Variables** add `SESSION_SECRET`, a random string of at least 32 characters. Optional: `CONFERENCE_TIMEZONE` (defaults to `Africa/Cairo`).
 5. **Redeploy.** Every deploy runs `scripts/vercel-build.sh`, which applies database migrations over the unpooled connection, creates the 11 committees the first time (never again, so deleted committees stay deleted), then builds the site. `vercel.json` pins the functions to Frankfurt (`fra1`), next to the database.
-6. **Secretariat code.** Open `https://your-site/setup` and choose the secretariat code. The page locks itself once a code exists. (Alternatively set a `SECRETARIAT_CODE` environment variable.)
-7. **Set up.** In *Secretariat → Access codes*, give each committee a chair code and hand them to the chairs. Fix committee full names and topics under *Committees*, and enter the schedule. Chairs then paste their delegation roster under *Delegations & topics*.
+6. **Owner and secretariat codes.** Open `https://your-site/setup` and choose both. The page locks itself once the owner code exists.
+7. **Set up.** Signed in as owner, in *Secretariat → Access codes*, give each committee a chair code and hand them to the chairs. Fix committee full names and topics under *Committees*, and enter the schedule. Chairs then paste their delegation roster under *Delegations & topics*.
 
 Using a database from somewhere else? Set `DATABASE_URL` to its connection string (and `DATABASE_URL_UNPOOLED` to a direct, non-pooled one if `DATABASE_URL` goes through a pooler).
 

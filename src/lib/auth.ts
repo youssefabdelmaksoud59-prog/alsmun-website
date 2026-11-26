@@ -8,6 +8,7 @@ import { db } from "./db";
 import { SESSION_COOKIE, SESSION_MAX_AGE, signSession, verifySession } from "./session-token";
 
 export const SECRETARIAT_CODE_KEY = "secretariatCodeHash";
+export const OWNER_CODE_KEY = "ownerCodeHash";
 export const MIN_CODE_LENGTH = 6;
 
 /** A fingerprint of the current code, so changing a code signs out everyone who used the old one. */
@@ -39,6 +40,18 @@ export async function checkSecretariatCode(code: string): Promise<{ ok: boolean;
   return { ok, version: codeVersion(stored) };
 }
 
+/** The owner code hash. Only the owner can change the secretariat code and chair codes. */
+export async function ownerCodeHash(): Promise<string | null> {
+  const row = await db.appSetting.findUnique({ where: { key: OWNER_CODE_KEY } });
+  return row?.value || null;
+}
+
+export async function checkOwnerCode(code: string): Promise<{ ok: boolean; version: number }> {
+  const stored = await ownerCodeHash();
+  if (!stored) return { ok: false, version: 0 };
+  return { ok: await bcrypt.compare(normaliseAccessCode(code), stored), version: codeVersion(stored) };
+}
+
 export async function hashCode(code: string) {
   return bcrypt.hash(normaliseAccessCode(code), 11);
 }
@@ -49,6 +62,11 @@ export async function startChairSession(committee: Committee) {
 
 export async function startSecretariatSession(version: number) {
   await setCookie(await signSession({ sub: "secretariat", role: "SECRETARIAT", pv: version }));
+}
+
+/** The owner gets everything the secretariat has, plus control of the access codes. */
+export async function startOwnerSession(version: number) {
+  await setCookie(await signSession({ sub: "owner", role: "SECRETARIAT", pv: version }));
 }
 
 async function setCookie(token: string) {
@@ -71,20 +89,27 @@ export type CurrentUser = {
   name: string;
   committeeId: string | null;
   committee: Committee | null;
+  /** True only for someone signed in with the owner code. */
+  isOwner: boolean;
 };
 
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const payload = await verifySession(token);
   if (!payload) return null;
+  if (payload.role === "SECRETARIAT" && payload.sub === "owner") {
+    const stored = await ownerCodeHash();
+    if (!stored || codeVersion(stored) !== payload.pv) return null;
+    return { role: "SECRETARIAT", name: "Owner", committeeId: null, committee: null, isOwner: true };
+  }
   if (payload.role === "SECRETARIAT") {
     const stored = await secretariatCodeHash();
     if (!stored || codeVersion(stored) !== payload.pv) return null;
-    return { role: "SECRETARIAT", name: "Secretariat", committeeId: null, committee: null };
+    return { role: "SECRETARIAT", name: "Secretariat", committeeId: null, committee: null, isOwner: false };
   }
   const committee = await db.committee.findUnique({ where: { id: payload.sub } });
   if (!committee?.chairCode || codeVersion(committee.chairCode) !== payload.pv) return null;
-  return { role: "CHAIR", name: `${committee.code} chair`, committeeId: committee.id, committee };
+  return { role: "CHAIR", name: `${committee.code} chair`, committeeId: committee.id, committee, isOwner: false };
 });
 
 export async function requireUser(loginPath = "/login/chair"): Promise<CurrentUser> {
@@ -100,6 +125,12 @@ function chairHome(user: CurrentUser) {
 export async function requireSecretariat(): Promise<CurrentUser> {
   const user = await requireUser("/login/secretariat");
   if (user.role !== "SECRETARIAT") redirect(chairHome(user));
+  return user;
+}
+
+export async function requireOwner(): Promise<CurrentUser> {
+  const user = await requireSecretariat();
+  if (!user.isOwner) redirect("/secretariat");
   return user;
 }
 
@@ -125,5 +156,11 @@ export async function assertCommitteeAccess(committeeId: string): Promise<Curren
 export async function assertSecretariat(): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user || user.role !== "SECRETARIAT") throw new Error("Only the secretariat can do this.");
+  return user;
+}
+
+export async function assertOwner(): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user?.isOwner) throw new Error("Only the owner can change access codes.");
   return user;
 }

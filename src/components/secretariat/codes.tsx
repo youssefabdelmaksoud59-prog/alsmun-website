@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { generateChairCode, setChairCode } from "@/app/actions/secretariat";
-import { changeSecretariatCode } from "@/app/actions/auth";
+import { changeOwnerCode, changeSecretariatCode } from "@/app/actions/auth";
 import { Alert } from "@/components/ui";
 import { Field } from "@/components/forms/field";
 import { useHydrated } from "@/components/use-hydrated";
@@ -54,6 +54,25 @@ export function SecretariatCodeForm() {
       {state && !state.ok && <Alert kind="error">{state.error}</Alert>}
       {state?.ok && <Alert kind="success">{state.message}</Alert>}
       <button type="submit" className="btn-gold" disabled={pending}>{pending ? "Saving…" : "Change secretariat code"}</button>
+    </form>
+  );
+}
+
+export function OwnerCodeForm() {
+  const [state, action, pending] = useActionState(changeOwnerCode, null);
+  const e = state && !state.ok ? state.fieldErrors : undefined;
+  return (
+    <form action={action} className="space-y-3">
+      <h2 className="text-base font-bold">Change your owner code</h2>
+      <Field label="New owner code" name="own-code" error={e?.code} hint="At least 6 characters. Only you should know it.">
+        <input id="own-code" name="code" type="password" className="input font-mono" required minLength={6} autoComplete="new-password" />
+      </Field>
+      <Field label="Type it again" name="own-confirm">
+        <input id="own-confirm" name="confirm" type="password" className="input font-mono" required autoComplete="new-password" />
+      </Field>
+      {state && !state.ok && <Alert kind="error">{state.error}</Alert>}
+      {state?.ok && <Alert kind="success">{state.message}</Alert>}
+      <button type="submit" className="btn-primary" disabled={pending}>{pending ? "Saving…" : "Change owner code"}</button>
     </form>
   );
 }

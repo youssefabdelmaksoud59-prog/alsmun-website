@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 import { STRIKE_ALERT, issueInclude, strikeCounts } from "@/lib/issues";
 import { toIssueView } from "@/lib/issue-view";
 import { IssueCard } from "@/components/issues/issue-card";
@@ -9,6 +10,7 @@ import { AutoRefresh } from "@/components/auto-refresh";
 export const metadata: Metadata = { title: "Secretariat" };
 
 export default async function SecretariatHome() {
+  const isOwner = !!(await getCurrentUser())?.isOwner;
   const [committees, openIssues, openCount, strikes, schedule] = await Promise.all([
     db.committee.findMany({
       orderBy: [{ sortOrder: "asc" }, { code: "asc" }],
@@ -74,7 +76,7 @@ export default async function SecretariatHome() {
         <div className="rounded-xl border border-gold-300 bg-gold-50 px-4 py-3 text-sm text-navy-950">
           <strong>Setup to finish:</strong>{" "}
           {setupIssues.map((c) => `${c.code} (${[!c.chairCode && "no chair code", c._count.delegations === 0 && "no delegations"].filter(Boolean).join(", ")})`).join(" · ")}
-          {" "}<Link href="/secretariat/codes" className="font-semibold underline">Set chair codes</Link>
+          {isOwner && <>{" "}<Link href="/secretariat/codes" className="font-semibold underline">Set chair codes</Link></>}
         </div>
       )}
 

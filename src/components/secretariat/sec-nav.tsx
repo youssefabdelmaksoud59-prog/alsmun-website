@@ -15,12 +15,13 @@ const ITEMS = [
   { href: "/chair", label: "Chair tools", exact: true },
 ];
 
-export function SecNav() {
+export function SecNav({ isOwner }: { isOwner: boolean }) {
   const pathname = usePathname();
+  const items = isOwner ? ITEMS : ITEMS.filter((it) => it.href !== "/secretariat/codes");
   return (
     <nav className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0" aria-label="Secretariat">
       <ul className="flex w-max gap-1 border-b border-slate-200">
-        {ITEMS.map((it) => {
+        {items.map((it) => {
           const active = it.exact ? pathname === it.href : pathname.startsWith(it.href);
           return (
             <li key={it.href}>

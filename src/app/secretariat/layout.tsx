@@ -14,7 +14,7 @@ export default async function SecretariatLayout({ children }: { children: React.
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-gold-600">Secretariat</p>
           <h1 className="text-2xl font-bold sm:text-3xl">Conference control</h1>
         </div>
-        <SecNav />
+        <SecNav isOwner={user.isOwner} />
         <div className="pt-6">{children}</div>
       </div>
     </>

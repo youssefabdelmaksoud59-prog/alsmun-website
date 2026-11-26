@@ -13,6 +13,12 @@ export function SiteFooter({ name }: { name: string }) {
           <Link href="/delegate" className="hover:text-navy-800">Delegate portal</Link>
         </nav>
       </div>
+      <div className="container-page pb-4">
+        {/* Deliberately quiet: the owner's way in. */}
+        <Link href="/owner" className="text-[10px] text-slate-300 no-underline hover:text-slate-400" aria-label="Site owner">
+          © {name}
+        </Link>
+      </div>
     </footer>
   );
 }
