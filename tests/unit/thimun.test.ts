@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkResolution, isSubClauseLine, joinClauses, openingPhrase, splitClauses } from "@/lib/thimun";
+import { checkResolution, isSubClauseLine, joinClauses, openingPhrase, operativeClauses, parseOperativeClause, preambulatoryClauses, splitClauses, type SubClause } from "@/lib/thimun";
 
 describe("clauses", () => {
   it("splits on blank lines and joins back", () => {
@@ -29,5 +29,35 @@ describe("clauses", () => {
     expect(isSubClauseLine("a) share data,")).toBe(true);
     expect(isSubClauseLine("  ii. fund centres;")).toBe(true);
     expect(isSubClauseLine("Further requests")).toBe(false);
+  });
+});
+
+describe("resolution structure", () => {
+  const flat = (subs: SubClause[], d = 1): string[] => subs.flatMap((s) => [`${d}:${s.label}`, ...flat(s.children, d + 1)]);
+
+  it("nests sub-clauses by indentation and keeps the typed labels", () => {
+    const c = parseOperativeClause(
+      "Calls upon States to act, through:\n   1. Building by:\n      1. One;\n\n      2. Two;\n   2. Improving through:\n      1. Three;",
+    );
+    expect(c.text).toBe("Calls upon States to act, through:");
+    expect(flat(c.subs)).toEqual(["1:1.", "2:1.", "2:2.", "1:2.", "2:1."]);
+  });
+
+  it("nests a./i. labels without indentation", () => {
+    const c = parseOperativeClause("Advocates for help including:\na. Transfer, including:\ni. One;\nii. Two;\nb. Measures:\ni. Three;\nc. Digital help:\ni. Four;");
+    expect(flat(c.subs)).toEqual(["1:a.", "2:i.", "2:ii.", "1:b.", "2:i.", "1:c.", "2:i."]);
+  });
+
+  it("joins blocks that start with a sub-clause back onto their clause", () => {
+    const op = "Urges States to:\n   1. Fund;\n\n   2. Train;\n\nRequests reports;\n\n3. Decides to remain seized.";
+    const clauses = operativeClauses(op);
+    expect(clauses).toHaveLength(3);
+    expect(parseOperativeClause(clauses[0]).subs.map((s) => s.label)).toEqual(["1.", "2."]);
+    expect(parseOperativeClause(clauses[2]).text).toBe("Decides to remain seized.");
+  });
+
+  it("splits a block of one-per-line preambulatory clauses", () => {
+    expect(preambulatoryClauses("Recalling A,\nNoting B,")).toEqual(["Recalling A,", "Noting B,"]);
+    expect(preambulatoryClauses("Recalling A that\ncontinues here,")).toHaveLength(1);
   });
 });

@@ -53,6 +53,7 @@ export default async function ResolutionPage({ params }: { params: Promise<{ id:
         </div>
         <ResolutionDocument
           committeeName={r.committee.name}
+          committeeCode={r.committee.code}
           topic={r.topic}
           submitter={r.delegation.name}
           coSubmitters={r.coSubmitters}

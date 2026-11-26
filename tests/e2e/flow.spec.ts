@@ -179,10 +179,14 @@ test("chair takes attendance", async ({ page }) => {
   await page.getByRole("radio", { name: "Present and voting: France" }).click();
   await page.getByRole("radio", { name: "Absent: Brazil" }).click();
   await page.getByRole("button", { name: "Mark unmarked present" }).click();
-  await page.reload();
-  await expect(page.getByRole("radio", { name: "Present and voting: France" })).toHaveAttribute("aria-checked", "true");
-  await expect(page.getByRole("radio", { name: "Absent: Brazil" })).toHaveAttribute("aria-checked", "true");
-  await expect(page.getByRole("radio", { name: "Present: Egypt" })).toHaveAttribute("aria-checked", "true");
+  // The board updates instantly and saves in the background, so reload until the saved state comes back
+  // (a single immediate reload can land before the last save finishes).
+  await expect(async () => {
+    await page.reload();
+    await expect(page.getByRole("radio", { name: "Present and voting: France" })).toHaveAttribute("aria-checked", "true", { timeout: 1000 });
+    await expect(page.getByRole("radio", { name: "Absent: Brazil" })).toHaveAttribute("aria-checked", "true", { timeout: 1000 });
+    await expect(page.getByRole("radio", { name: "Present: Egypt" })).toHaveAttribute("aria-checked", "true", { timeout: 1000 });
+  }).toPass({ timeout: 15_000 });
 });
 
 test("score sheet exports Excel and PDF", async ({ page }) => {
