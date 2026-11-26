@@ -1,20 +1,48 @@
-import { isSubClauseLine, openingPhrase, splitClauses } from "@/lib/thimun";
+import {
+  openingPhrase,
+  operativeClauses,
+  parseOperativeClause,
+  preambulatoryClauses,
+  type SubClause,
+} from "@/lib/thimun";
 
-function Phrase({ clause, kind }: { clause: string; kind: "preambulatory" | "operative" }) {
-  const firstLine = clause.split("\n")[0];
-  const phrase = openingPhrase(firstLine, kind);
-  const rest = phrase ? firstLine.trimStart().slice(phrase.length) : firstLine;
+/** The opening phrase in italics (preambulatory) or underlined (operative), the rest as typed. */
+function Lead({ text, kind }: { text: string; kind: "preambulatory" | "operative" }) {
+  const phrase = openingPhrase(text, kind);
+  const trimmed = text.trimStart();
+  if (!phrase) return <>{trimmed}</>;
   const Tag = kind === "preambulatory" ? "em" : "u";
   return (
     <>
-      {phrase && <Tag>{phrase}</Tag>}
-      {rest}
+      <Tag>{phrase}</Tag>
+      {trimmed.slice(phrase.length)}
     </>
+  );
+}
+
+/*
+ * Labels sit inline (not in a flex column) so that highlighting and copying gives
+ * "1. Calls upon …" on one line, the way it reads on screen.
+ */
+function Subs({ items, depth }: { items: SubClause[]; depth: number }) {
+  if (items.length === 0) return null;
+  return (
+    <div className={`reso-subs depth-${Math.min(depth, 4)}`}>
+      {items.map((s, i) => (
+        <div key={i} className="reso-sub">
+          <p className="reso-line">
+            <span className="reso-label">{s.label}</span> {s.text}
+          </p>
+          <Subs items={s.children} depth={depth + 1} />
+        </div>
+      ))}
+    </div>
   );
 }
 
 export function ResolutionDocument({
   committeeName,
+  committeeCode,
   topic,
   submitter,
   coSubmitters,
@@ -23,6 +51,7 @@ export function ResolutionDocument({
   reference,
 }: {
   committeeName: string;
+  committeeCode?: string;
   topic: string;
   submitter: string;
   coSubmitters?: string;
@@ -30,40 +59,39 @@ export function ResolutionDocument({
   operative: string;
   reference?: string;
 }) {
-  const pre = splitClauses(preambulatory);
-  const op = splitClauses(operative);
+  const pre = preambulatoryClauses(preambulatory);
+  const op = operativeClauses(operative).map(parseOperativeClause);
+  const forum = committeeCode && committeeCode !== committeeName ? `${committeeName} (${committeeCode})` : committeeName;
+  const committeeLine = /^the\s/i.test(committeeName) ? committeeName : `The ${committeeName}`;
   return (
     <article className="reso">
-      <dl className="mb-5 grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 font-sans text-sm">
-        {reference && (<><dt className="font-semibold text-slate-500">Reference</dt><dd>{reference}</dd></>)}
-        <dt className="font-semibold text-slate-500">Forum</dt><dd>{committeeName}</dd>
-        <dt className="font-semibold text-slate-500">Question of</dt><dd>{topic || "—"}</dd>
-        <dt className="font-semibold text-slate-500">Submitted by</dt><dd>{submitter}</dd>
-        {coSubmitters ? (<><dt className="font-semibold text-slate-500">Co-submitted by</dt><dd>{coSubmitters}</dd></>) : null}
+      <dl className="reso-head">
+        {reference && (
+          <div><dt>REFERENCE:</dt> <dd>{reference}</dd></div>
+        )}
+        <div><dt>FORUM:</dt> <dd>{forum}</dd></div>
+        <div><dt>QUESTION OF:</dt> <dd>{topic || "—"}</dd></div>
+        <div><dt>MAIN SUBMITTER:</dt> <dd>{submitter}</dd></div>
+        {coSubmitters ? (
+          <div><dt>CO-SUBMITTERS:</dt> <dd>{coSubmitters}</dd></div>
+        ) : null}
       </dl>
-      <p className="mb-3 font-semibold uppercase tracking-wide">The {committeeName},</p>
+      <p className="reso-committee">{committeeLine},</p>
       {pre.map((c, i) => (
-        <p key={`p${i}`} className="preamb whitespace-pre-line">
-          <Phrase clause={c} kind="preambulatory" />
-          {c.includes("\n") ? "\n" + c.split("\n").slice(1).join("\n") : null}
+        <p key={`p${i}`} className="reso-preamb">
+          <Lead text={c} kind="preambulatory" />
         </p>
       ))}
-      {op.map((c, i) => {
-        const lines = c.split("\n");
-        return (
-          <div key={`o${i}`} className="oper">
-            <span className="num">{i + 1}.</span>
-            <div className="min-w-0 flex-1">
-              <Phrase clause={c} kind="operative" />
-              {lines.slice(1).map((l, j) => (
-                <span key={j} className={isSubClauseLine(l) ? "sub" : "block"}>
-                  {l.trim()}
-                </span>
-              ))}
-            </div>
+      <div className="reso-ops">
+        {op.map((c, i) => (
+          <div key={`o${i}`} className="reso-op">
+            <p className="reso-line">
+              <span className="reso-label">{i + 1}.</span> <Lead text={c.text} kind="operative" />
+            </p>
+            <Subs items={c.subs} depth={1} />
           </div>
-        );
-      })}
+        ))}
+      </div>
     </article>
   );
 }

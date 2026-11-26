@@ -119,6 +119,7 @@ export function ResolutionForm({ committee }: { committee: PortalCommittee }) {
           ) : (
             <ResolutionDocument
               committeeName={committee.name}
+              committeeCode={committee.code}
               topic={topic}
               submitter={delegationName}
               coSubmitters={coSubmitters}

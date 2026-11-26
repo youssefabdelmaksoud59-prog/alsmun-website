@@ -8,7 +8,7 @@ import { EmptyState, StatusBadge } from "@/components/ui";
 import { AutoRefresh } from "@/components/auto-refresh";
 
 import { formatDateTime } from "@/lib/time";
-import { checkResolution, splitClauses } from "@/lib/thimun";
+import { checkResolution, operativeClauses, preambulatoryClauses } from "@/lib/thimun";
 
 export default async function ChairResolutions({ params, searchParams }: { params: Promise<{ code: string }>; searchParams: Promise<{ status?: string }> }) {
   const { committee } = await requireCommitteeAccess((await params).code);
@@ -36,7 +36,7 @@ export default async function ChairResolutions({ params, searchParams }: { param
       ) : (
         <div className="grid gap-4">
           {items.map((r, idx) => {
-            const issues = checkResolution(splitClauses(r.preambulatory), splitClauses(r.operative));
+            const issues = checkResolution(preambulatoryClauses(r.preambulatory), operativeClauses(r.operative));
             return (
               <article key={r.id} className="card overflow-hidden" data-testid="chair-resolution">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-3">
@@ -49,10 +49,10 @@ export default async function ChairResolutions({ params, searchParams }: { param
                 <div className="space-y-3 px-5 py-4">
                   <details open={tab === "pending" && idx === 0}>
                     <summary className="cursor-pointer text-sm font-semibold text-navy-700">
-                      Read resolution ({splitClauses(r.preambulatory).length} preambulatory, {splitClauses(r.operative).length} operative clauses)
+                      Read resolution ({preambulatoryClauses(r.preambulatory).length} preambulatory, {operativeClauses(r.operative).length} operative clauses)
                     </summary>
                     <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-                      <ResolutionDocument committeeName={committee.name} topic={r.topic} submitter={r.delegation.name} coSubmitters={r.coSubmitters} preambulatory={r.preambulatory} operative={r.operative} />
+                      <ResolutionDocument committeeName={committee.name} committeeCode={committee.code} topic={r.topic} submitter={r.delegation.name} coSubmitters={r.coSubmitters} preambulatory={r.preambulatory} operative={r.operative} />
                     </div>
                   </details>
                   {issues.length > 0 && (

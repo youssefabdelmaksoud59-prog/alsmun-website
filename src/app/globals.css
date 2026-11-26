@@ -51,13 +51,30 @@
   .prose-guide ul { @apply mb-2 list-disc space-y-1 pl-5 text-sm text-slate-700; }
 
   /* THIMUN document rendering */
-  .reso { @apply font-serif text-[15px] leading-relaxed text-ink; }
-  .reso .preamb { @apply mb-3; }
-  .reso .preamb em { @apply italic; }
-  .reso .oper { @apply mb-3 flex gap-2; }
-  .reso .oper .num { @apply w-6 shrink-0 text-right; }
-  .reso .oper u { @apply underline underline-offset-2; }
-  .reso .sub { @apply ml-6 block; }
+  /* Resolution in THIMUN layout. Labels are inline-block (not flex) so highlight + copy keeps "1. Text" on one line. */
+  .reso { @apply select-text font-serif text-[15px] leading-relaxed text-ink; }
+  .reso-head { @apply mb-6; }
+  .reso-head > div { @apply mb-0.5; }
+  .reso-head dt { @apply inline font-bold; }
+  .reso-head dd { @apply inline; }
+  @media (min-width: 640px) {
+    .reso-head > div { padding-left: 10.25em; text-indent: -10.25em; }
+    .reso-head dt { @apply inline-block; width: 10em; text-indent: 0; }
+  }
+  .reso-committee { @apply mb-3 font-bold uppercase tracking-wide; }
+  .reso-preamb { @apply mb-2.5; }
+  .reso-preamb em { @apply italic; }
+  .reso-ops { @apply mt-6; }
+  .reso-op { @apply mb-4; }
+  .reso-line { white-space: pre-line; padding-left: 2.25em; text-indent: -2.25em; }
+  .reso-label { display: inline-block; width: 2em; text-indent: 0; }
+  .reso-op > .reso-line u { @apply underline underline-offset-2; }
+  .reso-subs { margin-left: 2.25em; }
+  .reso-sub { @apply mt-1.5; }
+  .reso-subs.depth-2 .reso-sub, .reso-subs.depth-3 .reso-sub, .reso-subs.depth-4 .reso-sub { @apply mt-1; }
+  @media (max-width: 639px) {
+    .reso-subs { margin-left: 1.25em; }
+  }
 }
 
 @media print {

@@ -6,7 +6,7 @@ import { delegateBase, getCommitteeByCode } from "@/lib/settings";
 import { resolutionRef } from "@/lib/codes";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/ui";
 import { AutoRefresh } from "@/components/auto-refresh";
-import { splitClauses } from "@/lib/thimun";
+import { operativeClauses } from "@/lib/thimun";
 
 export const metadata: Metadata = { title: "Resolutions" };
 export const dynamic = "force-dynamic";
@@ -44,7 +44,7 @@ export default async function ResolutionsPage({ params }: { params: Promise<{ co
                 <h2 className="mt-2 font-semibold text-navy-950 group-hover:text-navy-700">{r.topic || "Untitled topic"}</h2>
                 <p className="mt-1 text-sm text-slate-600">Submitted by <strong>{r.delegation.name}</strong>{r.coSubmitters ? `, with ${r.coSubmitters}` : ""}</p>
                 <p className="mt-auto pt-3 text-xs text-slate-500">
-                  {splitClauses(r.operative).length} operative clauses · {r._count.amendments} approved amendment{r._count.amendments === 1 ? "" : "s"}
+                  {operativeClauses(r.operative).length} operative clauses · {r._count.amendments} approved amendment{r._count.amendments === 1 ? "" : "s"}
                 </p>
               </Link>
             </li>
